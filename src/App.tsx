@@ -799,7 +799,6 @@ function App() {
   const [sidebarDropFolderId, setSidebarDropFolderId] = useState<TLPageId | null>(null)
   const [lastSavedItemId, setLastSavedItemId] = useState<TLShapeId | null>(null)
   const folderCounterRef = useRef(1)
-  const createMenuRef = useRef<HTMLDivElement | null>(null)
   const sidebarDropFolderRef = useRef<TLPageId | null>(null)
   const recentPastedUrlsRef = useRef<Set<string>>(new Set())
   const recentPasteTimerRef = useRef<number | null>(null)
@@ -877,17 +876,6 @@ function App() {
     if (!editor) return
     editor.updateInstanceState({ isGridMode: false })
   }, [editor])
-
-  useEffect(() => {
-    const handlePointerDown = (event: PointerEvent) => {
-      if (!createMenuRef.current?.contains(event.target as Node)) {
-        setCreateMenuOpen(false)
-      }
-    }
-
-    window.addEventListener('pointerdown', handlePointerDown)
-    return () => window.removeEventListener('pointerdown', handlePointerDown)
-  }, [])
 
   useEffect(() => {
     if (!editor) return
@@ -1111,6 +1099,7 @@ function App() {
 
         setLastSavedItemId(createdIds[0] ?? null)
         setMediaInteractionEnabled(true)
+        setManualPasteOpen(false)
         setStatusMessage('Conteudo do clipboard salvo nesta pasta.')
         return
       }
@@ -1122,6 +1111,8 @@ function App() {
       }
 
       setLastSavedItemId(createdItem.id)
+      setManualPasteOpen(false)
+      setManualPasteValue('')
       setStatusMessage(
         createdItem.type === 'note'
           ? 'Nota criada a partir do clipboard.'
@@ -1132,6 +1123,22 @@ function App() {
       setStatusMessage('O navegador bloqueou o clipboard. Cole o texto manualmente na caixa que abriu.')
     }
   }, [activePortraitId, editor])
+
+  const openManualPastePanel = useCallback(async () => {
+    setCreateMenuOpen(false)
+    setManualPasteOpen(true)
+
+    if (manualPasteValue.trim()) return
+
+    try {
+      const plainText = await navigator.clipboard.readText()
+      if (plainText.trim()) {
+        setManualPasteValue(plainText)
+      }
+    } catch {
+      // keep panel open for manual paste
+    }
+  }, [manualPasteValue])
 
   const focusPortrait = useCallback(
     (portraitId: TLShapeId) => {
@@ -1680,66 +1687,22 @@ function App() {
         >
           <div className="canvas-toolbar">
             <div className="canvas-toolbar__group">
-              <div className="canvas-toolbar__menu-wrap" ref={createMenuRef}>
-                <button type="button" onClick={() => setCreateMenuOpen((value) => !value)}>
+              <div className="canvas-toolbar__menu-wrap">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setManualPasteOpen(false)
+                    setCreateMenuOpen((value) => !value)
+                  }}
+                >
                   <Plus size={16} />
                   <span>Novo</span>
                 </button>
-                {createMenuOpen && (
-                  <div className="canvas-toolbar__menu" role="menu" aria-label="Criar novo item">
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={() => {
-                        setCreateMenuOpen(false)
-                        createQuickNote()
-                      }}
-                    >
-                      <StickyNote size={16} />
-                      <span>Nova nota</span>
-                    </button>
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={() => {
-                        setCreateMenuOpen(false)
-                        createQuickText('text')
-                      }}
-                    >
-                      <MessageSquareText size={16} />
-                      <span>Novo texto</span>
-                    </button>
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={() => {
-                        setCreateMenuOpen(false)
-                        createQuickText('title')
-                      }}
-                    >
-                      <Type size={16} />
-                      <span>Novo titulo</span>
-                    </button>
-                    {workspaceView === 'edit' && (
-                      <button
-                        type="button"
-                        role="menuitem"
-                        onClick={() => {
-                          setCreateMenuOpen(false)
-                          createPortrait()
-                        }}
-                      >
-                        <RectangleVertical size={16} />
-                        <span>Novo retrato</span>
-                      </button>
-                    )}
-                  </div>
-                )}
               </div>
               <button
                 type="button"
                 onClick={() => {
-                  void pasteFromClipboard()
+                  void openManualPastePanel()
                 }}
                 title="Use Ctrl+V ou Cmd+V para colar"
               >
@@ -1755,6 +1718,79 @@ function App() {
               </button>
             </div>
           </div>
+
+          {createMenuOpen && (
+            <div className="quick-panel" role="dialog" aria-modal="true" aria-label="Criar novo item">
+              <div className="quick-panel__card">
+                <div className="quick-panel__copy">
+                  <span className="quick-panel__eyebrow">Criar</span>
+                  <h2>O que voce quer adicionar?</h2>
+                  <p>Escolha um formato simples para guardar a informacao nesta pasta.</p>
+                </div>
+                <div className="quick-panel__grid">
+                  <button
+                    type="button"
+                    className="quick-panel__action"
+                    onClick={() => {
+                      setCreateMenuOpen(false)
+                      createQuickNote()
+                    }}
+                  >
+                    <StickyNote size={18} />
+                    <strong>Nova nota</strong>
+                    <span>Boa para conteudo mais longo</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="quick-panel__action"
+                    onClick={() => {
+                      setCreateMenuOpen(false)
+                      createQuickText('text')
+                    }}
+                  >
+                    <MessageSquareText size={18} />
+                    <strong>Novo texto</strong>
+                    <span>Uma linha ou bloco curto</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="quick-panel__action"
+                    onClick={() => {
+                      setCreateMenuOpen(false)
+                      createQuickText('title')
+                    }}
+                  >
+                    <Type size={18} />
+                    <strong>Novo titulo</strong>
+                    <span>Para destacar uma secao</span>
+                  </button>
+                  {workspaceView === 'edit' && (
+                    <button
+                      type="button"
+                      className="quick-panel__action"
+                      onClick={() => {
+                        setCreateMenuOpen(false)
+                        createPortrait()
+                      }}
+                    >
+                      <RectangleVertical size={18} />
+                      <strong>Novo retrato</strong>
+                      <span>Area vertical para organizar midia</span>
+                    </button>
+                  )}
+                </div>
+                <div className="quick-panel__footer">
+                  <button
+                    type="button"
+                    className="quick-panel__secondary"
+                    onClick={() => setCreateMenuOpen(false)}
+                  >
+                    Fechar
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {manualPasteOpen && (
             <div className="manual-paste-modal" role="dialog" aria-modal="true" aria-label="Colar texto manualmente">
@@ -1773,6 +1809,9 @@ function App() {
                   autoFocus
                 />
                 <div className="manual-paste-modal__actions">
+                  <button type="button" onClick={() => void pasteFromClipboard()}>
+                    Usar clipboard
+                  </button>
                   <button
                     type="button"
                     className="manual-paste-modal__secondary"

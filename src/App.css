@@ -1002,6 +1002,105 @@ body,
   border-radius: 24px;
 }
 
+.quick-panel {
+  position: absolute;
+  inset: 88px 12px 12px;
+  z-index: 23;
+  display: grid;
+  place-items: center;
+  background: rgba(74, 61, 28, 0.1);
+  backdrop-filter: blur(8px);
+  border-radius: 24px;
+}
+
+.quick-panel__card {
+  width: min(620px, calc(100% - 32px));
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px;
+  border: 1px solid rgba(109, 95, 54, 0.14);
+  border-radius: 24px;
+  background: rgba(255, 251, 239, 0.98);
+  box-shadow: 0 22px 44px rgba(98, 80, 34, 0.14);
+}
+
+.quick-panel__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.quick-panel__eyebrow {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.quick-panel__copy h2 {
+  margin: 0;
+  font-size: 1.18rem;
+  line-height: 1.15;
+  color: var(--text);
+}
+
+.quick-panel__copy p {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.quick-panel__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.quick-panel__action {
+  border: 1px solid rgba(109, 95, 54, 0.12);
+  border-radius: 18px;
+  background: rgba(255, 252, 243, 0.96);
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.quick-panel__action strong {
+  font-size: 0.92rem;
+  line-height: 1.15;
+}
+
+.quick-panel__action span {
+  font-size: 0.76rem;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+.quick-panel__footer {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.quick-panel__secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
 .manual-paste-modal__card {
   width: min(560px, calc(100% - 32px));
   display: flex;
@@ -1748,6 +1847,21 @@ body,
     border-radius: 20px;
   }
 
+  .quick-panel {
+    inset: 12px 10px 88px;
+    border-radius: 20px;
+  }
+
+  .quick-panel__card {
+    width: 100%;
+    padding: 16px;
+    border-radius: 20px;
+  }
+
+  .quick-panel__grid {
+    grid-template-columns: 1fr;
+  }
+
   .canvas-nav {
     right: 12px;
     bottom: 96px;
@@ -1831,6 +1945,14 @@ body,
 
   .manual-paste-modal textarea {
     min-height: 160px;
+  }
+
+  .quick-panel__footer {
+    justify-content: stretch;
+  }
+
+  .quick-panel__secondary {
+    width: 100%;
   }
 
   .manual-paste-modal__actions {
