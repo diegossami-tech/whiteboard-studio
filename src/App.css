@@ -991,6 +991,98 @@ body,
   overflow-y: auto;
 }
 
+.manual-paste-modal {
+  position: absolute;
+  inset: 88px 12px 12px;
+  z-index: 24;
+  display: grid;
+  place-items: center;
+  background: rgba(74, 61, 28, 0.16);
+  backdrop-filter: blur(10px);
+  border-radius: 24px;
+}
+
+.manual-paste-modal__card {
+  width: min(560px, calc(100% - 32px));
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px;
+  border: 1px solid rgba(109, 95, 54, 0.14);
+  border-radius: 24px;
+  background: rgba(255, 251, 239, 0.98);
+  box-shadow: 0 22px 44px rgba(98, 80, 34, 0.14);
+}
+
+.manual-paste-modal__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.manual-paste-modal__eyebrow {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.manual-paste-modal__copy h2 {
+  margin: 0;
+  font-size: 1.18rem;
+  line-height: 1.15;
+  color: var(--text);
+}
+
+.manual-paste-modal__copy p {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.manual-paste-modal textarea {
+  min-height: 180px;
+  resize: vertical;
+  border: 1px solid rgba(109, 95, 54, 0.14);
+  border-radius: 18px;
+  background: rgba(255, 252, 244, 0.96);
+  padding: 14px 16px;
+  color: var(--text);
+  font: inherit;
+  line-height: 1.45;
+  outline: none;
+}
+
+.manual-paste-modal textarea:focus {
+  border-color: rgba(29, 143, 135, 0.34);
+  box-shadow: 0 0 0 3px rgba(29, 143, 135, 0.08);
+}
+
+.manual-paste-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.manual-paste-modal__actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-strong);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.manual-paste-modal__actions .manual-paste-modal__secondary {
+  background: transparent;
+}
+
 .library-stage__header {
   display: flex;
   align-items: flex-start;

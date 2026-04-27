@@ -611,6 +611,54 @@ function organizeMovedShapesInFolder(editor: Editor, shapeIds: TLShapeId[]) {
   )
 }
 
+function createTextItemFromPaste(editor: Editor, plainText: string, point?: { x: number; y: number }) {
+  const trimmedText = plainText.trim()
+  if (!trimmedText) return null
+
+  const center = point ?? editor.getViewportPageBounds().center
+  const isNote = trimmedText.includes('\n') || trimmedText.length > 140
+  const id = createShapeId()
+
+  if (isNote) {
+    editor.createShapes([
+      {
+        id,
+        type: 'note',
+        x: center.x - 120,
+        y: center.y - 110,
+        props: {
+          richText: toRichText(trimmedText),
+          size: 'm',
+          font: 'sans',
+        },
+      },
+    ])
+  } else {
+    editor.createShapes([
+      {
+        id,
+        type: 'text',
+        x: center.x - 180,
+        y: center.y - 30,
+        props: {
+          w: 360,
+          size: 'm',
+          font: 'sans',
+          richText: toRichText(trimmedText),
+        },
+      },
+    ])
+  }
+
+  organizeMovedShapesInFolder(editor, [id])
+  editor.setSelectedShapes([id])
+
+  return {
+    id,
+    type: isNote ? 'note' : 'text',
+  }
+}
+
 function createMediaItems(editor: Editor, items: MediaPasteItem[], point?: { x: number; y: number }) {
   const center = point ?? editor.getViewportPageBounds().center
   const gap = 40
@@ -745,6 +793,8 @@ function App() {
   const [libraryQuery, setLibraryQuery] = useState('')
   const [workspaceView, setWorkspaceView] = useState<WorkspaceView>('library')
   const [createMenuOpen, setCreateMenuOpen] = useState(false)
+  const [manualPasteOpen, setManualPasteOpen] = useState(false)
+  const [manualPasteValue, setManualPasteValue] = useState('')
   const [sidebarDropActive, setSidebarDropActive] = useState(false)
   const [sidebarDropFolderId, setSidebarDropFolderId] = useState<TLPageId | null>(null)
   const [lastSavedItemId, setLastSavedItemId] = useState<TLShapeId | null>(null)
@@ -982,26 +1032,25 @@ function App() {
           return
         }
 
-        const center = editor.getViewportPageBounds().center
-        const id = createShapeId()
-        editor.createShapes([
-          {
-            id,
-            type: 'text',
-            x: center.x - 180,
-            y: center.y - 30,
-            props: {
-              w: 360,
-              size: 'm',
-              font: 'sans',
-              richText: toRichText(plainText.trim()),
-            },
-          },
-        ])
-        organizeMovedShapesInFolder(editor, [id])
-        editor.setSelectedShapes([id])
-        setLastSavedItemId(id)
-        setStatusMessage('Texto colado e guardado como item editavel nesta pasta.')
+        const trimmedText = plainText.trim()
+        if (trimmedText) {
+          event.preventDefault()
+          event.stopPropagation()
+
+          if (typeof event.stopImmediatePropagation === 'function') {
+            event.stopImmediatePropagation()
+          }
+
+          const createdItem = createTextItemFromPaste(editor, trimmedText)
+          if (createdItem) {
+            setLastSavedItemId(createdItem.id)
+            setStatusMessage(
+              createdItem.type === 'note'
+                ? 'Nota colada e guardada nesta pasta.'
+                : 'Texto colado e guardado como item editavel nesta pasta.'
+            )
+          }
+        }
       }
     }
 
@@ -1012,6 +1061,75 @@ function App() {
         window.clearTimeout(recentPasteTimerRef.current)
         recentPasteTimerRef.current = null
       }
+    }
+  }, [activePortraitId, editor])
+
+  const saveManualPastedText = useCallback(() => {
+    if (!editor) return
+
+    const createdItem = createTextItemFromPaste(editor, manualPasteValue)
+    if (!createdItem) {
+      setStatusMessage('Cole algum texto antes de salvar.')
+      return
+    }
+
+    setLastSavedItemId(createdItem.id)
+    setManualPasteOpen(false)
+    setManualPasteValue('')
+    setStatusMessage(
+      createdItem.type === 'note'
+        ? 'Nota salva manualmente nesta pasta.'
+        : 'Texto salvo manualmente nesta pasta.'
+    )
+  }, [editor, manualPasteValue])
+
+  const pasteFromClipboard = useCallback(async () => {
+    if (!editor) return
+
+    try {
+      const plainText = await navigator.clipboard.readText()
+      const trimmedText = plainText.trim()
+
+      if (!trimmedText) {
+        setStatusMessage('Copie um texto, link, reel ou short antes de usar Colar.')
+        return
+      }
+
+      const mediaItems = extractMediaPasteItems(trimmedText)
+      if (mediaItems.length) {
+        const createdIds = createMediaItems(
+          editor,
+          mediaItems,
+          activePortraitId ? editor.getShapePageBounds(activePortraitId)?.center : undefined
+        )
+
+        if (activePortraitId) {
+          fitShapesToPortrait(editor, createdIds, activePortraitId)
+        } else {
+          organizeMovedShapesInFolder(editor, createdIds)
+        }
+
+        setLastSavedItemId(createdIds[0] ?? null)
+        setMediaInteractionEnabled(true)
+        setStatusMessage('Conteudo do clipboard salvo nesta pasta.')
+        return
+      }
+
+      const createdItem = createTextItemFromPaste(editor, trimmedText)
+      if (!createdItem) {
+        setStatusMessage('Nao encontrei texto valido no clipboard.')
+        return
+      }
+
+      setLastSavedItemId(createdItem.id)
+      setStatusMessage(
+        createdItem.type === 'note'
+          ? 'Nota criada a partir do clipboard.'
+          : 'Texto criado a partir do clipboard.'
+      )
+    } catch {
+      setManualPasteOpen(true)
+      setStatusMessage('O navegador bloqueou o clipboard. Cole o texto manualmente na caixa que abriu.')
     }
   }, [activePortraitId, editor])
 
@@ -1621,7 +1739,7 @@ function App() {
               <button
                 type="button"
                 onClick={() => {
-                  setWorkspaceView('edit')
+                  void pasteFromClipboard()
                 }}
                 title="Use Ctrl+V ou Cmd+V para colar"
               >
@@ -1637,6 +1755,41 @@ function App() {
               </button>
             </div>
           </div>
+
+          {manualPasteOpen && (
+            <div className="manual-paste-modal" role="dialog" aria-modal="true" aria-label="Colar texto manualmente">
+              <div className="manual-paste-modal__card">
+                <div className="manual-paste-modal__copy">
+                  <span className="manual-paste-modal__eyebrow">Colar texto</span>
+                  <h2>Cole sua nota ou texto aqui</h2>
+                  <p>
+                    Se o navegador bloquear o clipboard, voce ainda pode colar manualmente e salvar nesta pasta.
+                  </p>
+                </div>
+                <textarea
+                  value={manualPasteValue}
+                  onChange={(event) => setManualPasteValue(event.target.value)}
+                  placeholder="Cole aqui seu texto, anotacao ou bloco maior de conteudo"
+                  autoFocus
+                />
+                <div className="manual-paste-modal__actions">
+                  <button
+                    type="button"
+                    className="manual-paste-modal__secondary"
+                    onClick={() => {
+                      setManualPasteOpen(false)
+                      setManualPasteValue('')
+                    }}
+                  >
+                    Cancelar
+                  </button>
+                  <button type="button" onClick={saveManualPastedText}>
+                    Salvar
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {workspaceView === 'library' && (
             <div className="library-stage">
