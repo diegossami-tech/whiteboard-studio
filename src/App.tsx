@@ -10,7 +10,6 @@ import {
   Compass,
   Copy,
   CopyPlus,
-  FileText,
   Eraser,
   FolderKanban,
   Hand,
@@ -65,7 +64,7 @@ type MediaPasteItem =
 type BoardEntry = Pick<TLPage, 'id' | 'name'>
 type ToolbarTool = 'select' | 'hand' | 'rectangle' | 'ellipse' | 'line' | 'arrow' | 'text' | 'draw' | 'eraser'
 type BoardDialogState = { mode: 'create' | 'rename' } | null
-type SidebarSection = 'projects' | 'library' | 'templates' | 'files'
+type SidebarSection = 'files' | 'recent' | 'favorites' | 'shared' | 'library' | 'templates' | 'trash'
 type AssetSummary = {
   id: TLShapeId
   type: 'image' | 'media' | 'bookmark' | 'text' | 'note'
@@ -545,7 +544,7 @@ function App() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [assetsOpen, setAssetsOpen] = useState(false)
   const [pasteOpen, setPasteOpen] = useState(false)
-  const [activeSidebarSection, setActiveSidebarSection] = useState<SidebarSection>('projects')
+  const [activeSidebarSection, setActiveSidebarSection] = useState<SidebarSection>('files')
   const [pasteValue, setPasteValue] = useState('')
   const [boardDialog, setBoardDialog] = useState<BoardDialogState>(null)
   const [boardDraft, setBoardDraft] = useState('')
@@ -818,7 +817,7 @@ function App() {
     setBoardDraft(`Board ${nextIndex}`)
     setBoardDialog({ mode: 'create' })
     setMenuOpen(false)
-    setActiveSidebarSection('projects')
+    setActiveSidebarSection('files')
     setMobileMinimapOpen(false)
   }, [boards.length])
 
@@ -829,7 +828,7 @@ function App() {
     setBoardDraft(page.name)
     setBoardDialog({ mode: 'rename' })
     setMenuOpen(false)
-    setActiveSidebarSection('projects')
+    setActiveSidebarSection('files')
     setMobileMinimapOpen(false)
   }, [activeBoardId, editor])
 
@@ -862,7 +861,7 @@ function App() {
       editor.setCurrentPage(pageId)
       setMenuOpen(false)
       setAssetsOpen(false)
-      setActiveSidebarSection('projects')
+      setActiveSidebarSection('files')
       setMobileMinimapOpen(false)
       setStatusMessage('Board switched.')
     },
@@ -947,13 +946,6 @@ function App() {
       setMobileToolsOpen(false)
       setMobilePropertiesOpen(false)
 
-      if (section === 'projects') {
-        setMenuOpen(true)
-        setAssetsOpen(false)
-        setPasteOpen(false)
-        return
-      }
-
       if (section === 'library') {
         setAssetsOpen(true)
         setMenuOpen(false)
@@ -962,15 +954,58 @@ function App() {
       }
 
       if (section === 'files') {
-        openPastePanel()
+        setAssetsOpen(false)
+        setMenuOpen(false)
+        setPasteOpen(false)
+        setStatusMessage('Browse your boards and saved items from the workspace.')
+        return
+      }
+
+      if (section === 'templates') {
+        setMenuOpen(false)
+        setAssetsOpen(false)
+        setPasteOpen(false)
+        setStatusMessage('Templates collection is coming next.')
+        return
+      }
+
+      if (section === 'recent') {
+        setMenuOpen(false)
+        setAssetsOpen(false)
+        setPasteOpen(false)
+        setStatusMessage('Recent activity view is coming next.')
+        return
+      }
+
+      if (section === 'favorites') {
+        setMenuOpen(false)
+        setAssetsOpen(false)
+        setPasteOpen(false)
+        setStatusMessage('Favorites view is coming next.')
+        return
+      }
+
+      if (section === 'shared') {
+        setMenuOpen(false)
+        setAssetsOpen(false)
+        setPasteOpen(false)
+        setStatusMessage('Shared boards view is coming next.')
+        return
+      }
+
+      if (section === 'trash') {
+        setMenuOpen(false)
+        setAssetsOpen(false)
+        setPasteOpen(false)
+        setStatusMessage('Trash is empty.')
         return
       }
 
       setMenuOpen(false)
       setAssetsOpen(false)
-      setStatusMessage('Template library coming next.')
+      setPasteOpen(false)
     },
-    [openPastePanel]
+    []
   )
 
   const selectedShapes = useMemo(() => {
@@ -1011,9 +1046,7 @@ function App() {
   )
 
   const boardName = boards.find((board) => board.id === activeBoardId)?.name ?? 'Board'
-  const boardCountLabel = `${boards.length} board${boards.length === 1 ? '' : 's'}`
   const assetCountLabel = `${assets.length} asset${assets.length === 1 ? '' : 's'}`
-  const quickAssets = assets.slice(0, 4)
 
   const minimap = useMemo(() => {
     if (!editor) return null
@@ -1069,6 +1102,18 @@ function App() {
     }
   }, [activeBoardId, assets, editor, selectedShapeIds, zoomLevel])
 
+  const addStickyNote = useCallback(() => {
+    if (!editor) return
+    createTextShape(editor, 'New note\nAdd your thought here')
+    setAccentToolActive(false)
+    setStatusMessage('Sticky note added.')
+  }, [editor])
+
+  const addImagePrompt = useCallback(() => {
+    setAccentToolActive(false)
+    openPastePanel()
+  }, [openPastePanel])
+
   return (
     <div className={`whiteboard-app ${mediaInteractionEnabled ? 'media-live' : 'media-locked'}`}>
       <div className="canvas-shell">
@@ -1085,63 +1130,51 @@ function App() {
             </div>
             <div className="workspace-brand__copy">
               <span className="workspace-brand__eyebrow">Whiteboard Studio</span>
-              <strong>Ornate Workspace</strong>
+              <strong>Workspace</strong>
             </div>
           </div>
 
           <div className="workspace-search">
             <Search size={16} />
-            <span>Search boards, files, and assets</span>
+            <span>Search files and boards</span>
           </div>
 
-          <section className="workspace-sidebar__section">
+          <nav className="sidebar-nav-list" aria-label="Main navigation">
+            <button type="button" className={`sidebar-nav-item ${activeSidebarSection === 'files' ? 'sidebar-nav-item--active' : ''}`} onClick={() => openSidebarSection('files')}>
+              <FolderKanban size={16} />
+              <span>Meus arquivos</span>
+            </button>
+            <button type="button" className={`sidebar-nav-item ${activeSidebarSection === 'recent' ? 'sidebar-nav-item--active' : ''}`} onClick={() => openSidebarSection('recent')}>
+              <Compass size={16} />
+              <span>Recentes</span>
+            </button>
+            <button type="button" className={`sidebar-nav-item ${activeSidebarSection === 'favorites' ? 'sidebar-nav-item--active' : ''}`} onClick={() => openSidebarSection('favorites')}>
+              <Sparkles size={16} />
+              <span>Favoritos</span>
+            </button>
+            <button type="button" className={`sidebar-nav-item ${activeSidebarSection === 'shared' ? 'sidebar-nav-item--active' : ''}`} onClick={() => openSidebarSection('shared')}>
+              <Share2 size={16} />
+              <span>Compartilhados</span>
+            </button>
+            <button type="button" className={`sidebar-nav-item ${activeSidebarSection === 'library' ? 'sidebar-nav-item--active' : ''}`} onClick={() => openSidebarSection('library')}>
+              <BookOpen size={16} />
+              <span>Biblioteca</span>
+            </button>
+            <button type="button" className={`sidebar-nav-item ${activeSidebarSection === 'templates' ? 'sidebar-nav-item--active' : ''}`} onClick={() => openSidebarSection('templates')}>
+              <LayoutTemplate size={16} />
+              <span>Templates</span>
+            </button>
+            <button type="button" className={`sidebar-nav-item ${activeSidebarSection === 'trash' ? 'sidebar-nav-item--active' : ''}`} onClick={() => openSidebarSection('trash')}>
+              <Trash2 size={16} />
+              <span>Lixeira</span>
+            </button>
+          </nav>
+
+          <section className="workspace-sidebar__section workspace-sidebar__section--boards">
             <div className="workspace-sidebar__section-header">
-              <span className="panel-kicker">Navigation</span>
+              <span className="panel-kicker">Boards</span>
               <button type="button" className="sidebar-mini-action" onClick={createBoard} aria-label="Create board">
                 <Plus size={15} />
-              </button>
-            </div>
-            <div className="sidebar-nav-list">
-              <button
-                type="button"
-                className={`sidebar-nav-item ${activeSidebarSection === 'projects' ? 'sidebar-nav-item--active' : ''}`}
-                onClick={() => openSidebarSection('projects')}
-              >
-                <FolderKanban size={16} />
-                <span>Projects</span>
-              </button>
-              <button
-                type="button"
-                className={`sidebar-nav-item ${activeSidebarSection === 'library' ? 'sidebar-nav-item--active' : ''}`}
-                onClick={() => openSidebarSection('library')}
-              >
-                <BookOpen size={16} />
-                <span>Library</span>
-              </button>
-              <button
-                type="button"
-                className={`sidebar-nav-item ${activeSidebarSection === 'templates' ? 'sidebar-nav-item--active' : ''}`}
-                onClick={() => openSidebarSection('templates')}
-              >
-                <LayoutTemplate size={16} />
-                <span>Templates</span>
-              </button>
-              <button
-                type="button"
-                className={`sidebar-nav-item ${activeSidebarSection === 'files' ? 'sidebar-nav-item--active' : ''}`}
-                onClick={() => openSidebarSection('files')}
-              >
-                <FileText size={16} />
-                <span>Files</span>
-              </button>
-            </div>
-          </section>
-
-          <section className="workspace-sidebar__section">
-            <div className="workspace-sidebar__section-header">
-              <span className="panel-kicker">Projects</span>
-              <button type="button" className="sidebar-link-button" onClick={renameBoard}>
-                Rename
               </button>
             </div>
             <div className="sidebar-board-list">
@@ -1157,7 +1190,7 @@ function App() {
                   </div>
                   <div className="sidebar-board-card__copy">
                     <strong>{board.name}</strong>
-                    <span>{board.id === activeBoardId ? 'Current canvas' : 'Switch board'}</span>
+                    <span>{board.id === activeBoardId ? 'Atual' : 'Abrir board'}</span>
                   </div>
                   <ArrowRight size={14} />
                 </button>
@@ -1165,72 +1198,13 @@ function App() {
             </div>
           </section>
 
-          <section className="workspace-sidebar__section workspace-sidebar__section--library">
-            <div className="workspace-sidebar__section-header">
-              <span className="panel-kicker">Library preview</span>
-              <button
-                type="button"
-                className="sidebar-link-button"
-                onClick={() => openSidebarSection('library')}
-              >
-                View all
-              </button>
-            </div>
-            {quickAssets.length ? (
-              <div className="sidebar-asset-stack">
-                {quickAssets.map((asset) => (
-                  <button key={asset.id} type="button" className="sidebar-asset-card" onClick={() => focusShape(asset.id)}>
-                    <div className="sidebar-asset-card__thumb">
-                      {asset.previewUrl ? (
-                        <img src={asset.previewUrl} alt={asset.title} />
-                      ) : asset.type === 'media' ? (
-                        <ArrowUpRight size={16} />
-                      ) : asset.type === 'bookmark' ? (
-                        <Link2 size={16} />
-                      ) : asset.type === 'note' ? (
-                        <StickyNote size={16} />
-                      ) : asset.type === 'text' ? (
-                        <Type size={16} />
-                      ) : (
-                        <Image size={16} />
-                      )}
-                    </div>
-                    <div className="sidebar-asset-card__copy">
-                      <strong>{asset.title}</strong>
-                      <span>{asset.subtitle}</span>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <div className="sidebar-empty-state">
-                <Sparkles size={16} />
-                <div>
-                  <strong>Start with a paste</strong>
-                  <span>Drop screenshots, links, or text onto the board.</span>
-                </div>
-              </div>
-            )}
-          </section>
-
-          <div className="workspace-sidebar__meta">
-            <div>
-              <strong>{boardCountLabel}</strong>
-              <span>Persistent whiteboards</span>
-            </div>
-            <div>
-              <strong>{assetCountLabel}</strong>
-              <span>Visual references collected</span>
-            </div>
-          </div>
-
           <div className="upgrade-card">
             <div className="upgrade-card__icon" aria-hidden="true">
               <GeometricMotifIcon />
             </div>
             <div className="upgrade-card__copy">
-              <strong>Upgrade to Atelier</strong>
-              <span>Unlock shared libraries, geometric templates, and richer exports.</span>
+              <strong>Upgrade Whiteboard Pro</strong>
+              <span>Shared libraries, exports, and premium templates.</span>
             </div>
             <button type="button" className="upgrade-card__button" onClick={() => setStatusMessage('Upgrade flow coming next.')}>
               Upgrade
@@ -1246,7 +1220,7 @@ function App() {
               onClick={() => {
                 setMenuOpen((open) => !open)
                 setAssetsOpen(false)
-                setActiveSidebarSection('projects')
+                setActiveSidebarSection('files')
                 setMobileToolsOpen(false)
                 setMobileMinimapOpen(false)
               }}
@@ -1258,7 +1232,7 @@ function App() {
             <button
               type="button"
               className="board-selector"
-              onClick={() => openSidebarSection('projects')}
+              onClick={renameBoard}
               aria-label="Current project selector"
             >
               <div className="board-selector__copy">
@@ -1299,32 +1273,6 @@ function App() {
           </div>
 
           <div className="app-topbar__right">
-            <button
-              type="button"
-              className="floating-icon-button floating-icon-button--label"
-              onClick={openPastePanel}
-              aria-label="Open paste panel"
-              title="Paste"
-            >
-              <Copy size={18} />
-              <span>Paste</span>
-            </button>
-            <button
-              type="button"
-              className="floating-icon-button floating-icon-button--label"
-              onClick={() => {
-                setAssetsOpen((open) => !open)
-                setMenuOpen(false)
-                setActiveSidebarSection('library')
-                setMobileToolsOpen(false)
-                setMobileMinimapOpen(false)
-              }}
-              aria-label="Open assets"
-              title="Assets"
-            >
-              <BookOpen size={18} />
-              <span>Assets</span>
-            </button>
             <button
               type="button"
               className="floating-icon-button"
@@ -1577,13 +1525,15 @@ function App() {
           <div className="canvas-accent-banner__line" />
         </div>
 
-        {hasSelection && !assetsOpen && !menuOpen && !pasteOpen && !boardDialog && (
+        {!assetsOpen && !menuOpen && !pasteOpen && !boardDialog && (
           <aside className={`floating-panel properties-panel ${mobilePropertiesOpen ? 'properties-panel--mobile-open' : ''}`}>
             <div className="floating-panel__header">
               <div>
                 <span className="panel-kicker">Properties</span>
                 <h2>
-                  {selectedShapes.length > 1
+                  {!hasSelection
+                    ? 'Canvas defaults'
+                    : selectedShapes.length > 1
                     ? `${selectedShapes.length} items selected`
                     : primarySelectedShape?.type === INSTAGRAM_REEL_SHAPE_TYPE
                       ? 'Instagram Reel'
@@ -1602,16 +1552,22 @@ function App() {
               </div>
             </div>
 
+            {!hasSelection && (
+              <div className="properties-empty">
+                <span>Select an object on the canvas to inspect and edit it here.</span>
+              </div>
+            )}
+
             <div className="properties-panel__section">
               <span>Actions</span>
               <div className="inline-actions">
-                <button type="button" className="secondary-icon-button" onClick={duplicateSelection} title="Duplicate">
+                <button type="button" className="secondary-icon-button" onClick={duplicateSelection} title="Duplicate" disabled={!hasSelection}>
                   <CopyPlus size={16} />
                 </button>
-                <button type="button" className="secondary-icon-button" onClick={bringSelectionToFront} title="Bring to front">
+                <button type="button" className="secondary-icon-button" onClick={bringSelectionToFront} title="Bring to front" disabled={!hasSelection}>
                   <BringToFront size={16} />
                 </button>
-                <button type="button" className="secondary-icon-button secondary-icon-button--danger" onClick={deleteSelection} title="Delete">
+                <button type="button" className="secondary-icon-button secondary-icon-button--danger" onClick={deleteSelection} title="Delete" disabled={!hasSelection}>
                   <Trash2 size={16} />
                 </button>
               </div>
@@ -1719,7 +1675,7 @@ function App() {
             <div className="properties-panel__section">
               <span>Layers</span>
               <div className="inline-actions">
-                <button type="button" className="secondary-button secondary-button--full" onClick={bringSelectionToFront}>
+                <button type="button" className="secondary-button secondary-button--full" onClick={bringSelectionToFront} disabled={!hasSelection}>
                   <Layers3 size={16} />
                   <span>Bring forward</span>
                 </button>
@@ -1752,6 +1708,26 @@ function App() {
               onClick={() => activateTool(tool.id)}
             />
           ))}
+          <button
+            type="button"
+            className="tool-button"
+            onClick={addStickyNote}
+            aria-label="Sticky notes"
+            title="Sticky notes"
+          >
+            <StickyNote size={18} />
+            <span>Notes</span>
+          </button>
+          <button
+            type="button"
+            className="tool-button"
+            onClick={addImagePrompt}
+            aria-label="Image"
+            title="Image"
+          >
+            <Image size={18} />
+            <span>Image</span>
+          </button>
           <button
             type="button"
             className={`tool-button tool-button--accent ${accentToolActive ? 'tool-button--active tool-button--accent-active' : ''}`}
@@ -1857,6 +1833,14 @@ function App() {
                     onClick={() => activateTool(tool.id)}
                   />
                 ))}
+                <button type="button" className="tool-button tool-button--compact" onClick={addStickyNote} aria-label="Sticky notes">
+                  <StickyNote size={18} />
+                  <span>Notes</span>
+                </button>
+                <button type="button" className="tool-button tool-button--compact" onClick={addImagePrompt} aria-label="Image">
+                  <Image size={18} />
+                  <span>Image</span>
+                </button>
                 <button
                   type="button"
                   className={`tool-button tool-button--compact tool-button--accent ${accentToolActive ? 'tool-button--active tool-button--accent-active' : ''}`}
@@ -1872,7 +1856,7 @@ function App() {
         )}
 
         <div className="mobile-bottom-nav" aria-label="Mobile navigation">
-          <button type="button" className="mobile-bottom-nav__item" onClick={() => openSidebarSection('projects')}>
+          <button type="button" className="mobile-bottom-nav__item" onClick={() => openSidebarSection('files')}>
             <FolderKanban size={16} />
             <span>Boards</span>
           </button>
