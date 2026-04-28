@@ -1,37 +1,42 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowRight,
+  ArrowUpRight,
   BookOpen,
   BringToFront,
-  ChevronsRight,
+  Circle,
   Copy,
-  Crop,
-  FolderPlus,
+  CopyPlus,
+  Eraser,
+  Hand,
   Image,
-  LayoutDashboard,
   Link2,
   Menu,
-  MessageSquareText,
-  Move,
   Minus,
-  PenTool,
-  RectangleVertical,
-  Sparkles,
+  MousePointer2,
+  PencilLine,
   Plus,
-  Search,
+  Redo2,
+  Square,
   StickyNote,
+  Trash2,
   Type,
-  Pencil,
+  Undo2,
   X,
 } from 'lucide-react'
 import {
-  Tldraw,
-  PageRecordType,
   createEmptyBookmarkShape,
   createShapeId,
+  DefaultColorStyle,
+  DefaultDashStyle,
+  DefaultFillStyle,
+  DefaultFontStyle,
+  DefaultSizeStyle,
+  GeoShapeGeoStyle,
+  PageRecordType,
+  Tldraw,
   toRichText,
   type Editor,
-  type TLComponents,
   type TLPage,
   type TLPageId,
   type TLShape,
@@ -44,39 +49,39 @@ type MediaPasteItem =
   | { kind: 'youtube'; layout: 'video' | 'short'; url: string }
   | { kind: 'instagram-reel'; url: string }
   | { kind: 'bookmark'; url: string }
-type FolderEntry = Pick<TLPage, 'id' | 'name'>
-type PortraitEntry = { id: TLShapeId; name: string }
-type MeasurementGuide = {
-  id: string
-  orientation: 'horizontal' | 'vertical'
-  start: { x: number; y: number }
-  end: { x: number; y: number }
-  distance: number
-}
-type MeasurementOverlay = {
-  guides: MeasurementGuide[]
-  width: number
-  height: number
-}
-type SavedItemSummary = {
+
+type BoardEntry = Pick<TLPage, 'id' | 'name'>
+type ToolbarTool = 'select' | 'hand' | 'rectangle' | 'ellipse' | 'line' | 'arrow' | 'text' | 'draw' | 'eraser'
+type BoardDialogState = { mode: 'create' | 'rename' } | null
+type AssetSummary = {
   id: TLShapeId
-  type: 'media' | 'bookmark' | 'image' | 'note' | 'text'
+  type: 'image' | 'media' | 'bookmark' | 'text' | 'note'
   title: string
   subtitle: string
-  labelShapeId?: TLShapeId
   previewUrl?: string
 }
-type WorkspaceView = 'library' | 'edit'
-type FolderDialogState = { mode: 'create' | 'rename'; pageId?: TLPageId }
 
-const PORTRAIT_NAME_PREFIX = 'Retrato '
-const PORTRAIT_WIDTH = 420
-const PORTRAIT_HEIGHT = 740
-const PORTRAIT_GAP = 48
-const PORTRAIT_PADDING = 24
-const FOLDER_STACK_ORIGIN_X = 96
-const FOLDER_STACK_ORIGIN_Y = 88
-const FOLDER_STACK_GAP = 56
+const COLOR_OPTIONS = ['black', 'blue', 'green', 'yellow', 'red'] as const
+const FILL_OPTIONS = ['none', 'semi', 'solid'] as const
+const SIZE_OPTIONS = ['s', 'm', 'l', 'xl'] as const
+const DASH_OPTIONS = ['draw', 'solid', 'dashed', 'dotted'] as const
+const FONT_OPTIONS = ['draw', 'sans', 'serif', 'mono'] as const
+
+const TOOLBAR_TOOLS: Array<{
+  id: ToolbarTool
+  label: string
+  icon: typeof MousePointer2
+}> = [
+  { id: 'select', label: 'Select', icon: MousePointer2 },
+  { id: 'hand', label: 'Hand', icon: Hand },
+  { id: 'rectangle', label: 'Rectangle', icon: Square },
+  { id: 'ellipse', label: 'Circle', icon: Circle },
+  { id: 'line', label: 'Line', icon: Minus },
+  { id: 'arrow', label: 'Arrow', icon: ArrowUpRight },
+  { id: 'text', label: 'Text', icon: Type },
+  { id: 'draw', label: 'Draw', icon: PencilLine },
+  { id: 'eraser', label: 'Eraser', icon: Eraser },
+]
 
 function richTextToPlainText(value: unknown): string {
   if (!value || typeof value !== 'object') return ''
@@ -98,251 +103,82 @@ function richTextToPlainText(value: unknown): string {
   return nodes.map(readNode).filter(Boolean).join('\n').trim()
 }
 
-function getSavedItemSummaries(editor: Editor): SavedItemSummary[] {
-  const shapes = editor.getCurrentPageShapes()
-  const shapeEntries = shapes.map((shape) => ({ shape, bounds: editor.getShapePageBounds(shape.id) }))
-  const labelByShapeId = new Map<TLShapeId, string>()
-  const labelShapeIdByShapeId = new Map<TLShapeId, TLShapeId>()
-  const linkedTextShapeIds = new Set<TLShapeId>()
-
-  for (const entry of shapeEntries) {
-    if (
-      !entry.bounds ||
-      !['embed', INSTAGRAM_REEL_SHAPE_TYPE, 'bookmark', 'image'].includes(entry.shape.type)
-    ) {
-      continue
-    }
-
-    const targetBounds = entry.bounds
-
-    const labelCandidate = shapeEntries.find((candidate) => {
-      if (!candidate.bounds || candidate.shape.type !== 'text') return false
-      const textValue = richTextToPlainText((candidate.shape.props as { richText?: unknown }).richText)
-      if (!textValue) return false
-
-      const verticalDistance = candidate.bounds.minY - targetBounds.maxY
-      const horizontalOverlap = rangesOverlap(
-        targetBounds.minX,
-        targetBounds.maxX,
-        candidate.bounds.minX,
-        candidate.bounds.maxX
-      )
-
-      return verticalDistance >= 0 && verticalDistance <= 56 && horizontalOverlap
-    })
-
-    if (labelCandidate) {
-      labelByShapeId.set(
-        entry.shape.id,
-        richTextToPlainText((labelCandidate.shape.props as { richText?: unknown }).richText)
-      )
-      labelShapeIdByShapeId.set(entry.shape.id, labelCandidate.shape.id)
-      linkedTextShapeIds.add(labelCandidate.shape.id)
-    }
+function safeHostname(url: string) {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '')
+  } catch {
+    return 'External link'
   }
+}
 
-  return shapes
-    .map<SavedItemSummary | null>((shape) => {
+function getAssetSummaries(editor: Editor): AssetSummary[] {
+  return editor
+    .getCurrentPageShapes()
+    .map<AssetSummary | null>((shape) => {
+      if (shape.type === 'image') {
+        return {
+          id: shape.id,
+          type: 'image',
+          title: 'Pasted image',
+          subtitle: 'Ready to resize, crop, or move',
+          previewUrl: typeof shape.props.url === 'string' ? shape.props.url : undefined,
+        }
+      }
+
       if (shape.type === 'embed') {
+        const isShort = shape.props.h > shape.props.w
         return {
           id: shape.id,
           type: 'media',
-          title:
-            labelByShapeId.get(shape.id) ||
-            (typeof shape.props.url === 'string' && shape.props.url.includes('/shorts/')
-              ? 'Short salvo'
-              : 'Video salvo'),
-          subtitle: 'Abra, renomeie e organize nesta pasta',
-          labelShapeId: labelShapeIdByShapeId.get(shape.id),
-        } satisfies SavedItemSummary
+          title: isShort ? 'YouTube Short' : 'YouTube video',
+          subtitle: 'Embedded on the board',
+        }
       }
 
       if (shape.type === INSTAGRAM_REEL_SHAPE_TYPE) {
         return {
           id: shape.id,
           type: 'media',
-          title: labelByShapeId.get(shape.id) || 'Reel salvo',
-          subtitle: 'Visualizavel e pronto para nomear',
-          labelShapeId: labelShapeIdByShapeId.get(shape.id),
-        } satisfies SavedItemSummary
+          title: 'Instagram Reel',
+          subtitle: 'Embedded on the board',
+        }
       }
 
       if (shape.type === 'bookmark') {
-        const title = labelByShapeId.get(shape.id) || 'Link salvo'
-        let subtitle = 'Link'
-        if (typeof shape.props.url === 'string') {
-          try {
-            subtitle = new URL(shape.props.url).hostname.replace(/^www\./, '')
-          } catch {
-            subtitle = 'Link'
-          }
-        }
+        const url = typeof shape.props.url === 'string' ? shape.props.url : ''
         return {
           id: shape.id,
           type: 'bookmark',
-          title,
-          subtitle,
-          labelShapeId: labelShapeIdByShapeId.get(shape.id),
-        } satisfies SavedItemSummary
-      }
-
-      if (shape.type === 'image') {
-        return {
-          id: shape.id,
-          type: 'image',
-          title: labelByShapeId.get(shape.id) || 'Print salvo',
-          subtitle: 'Imagem pronta para mover ou recortar',
-          labelShapeId: labelShapeIdByShapeId.get(shape.id),
-          previewUrl: typeof shape.props.url === 'string' ? shape.props.url : undefined,
-        } satisfies SavedItemSummary
+          title: safeHostname(url),
+          subtitle: 'Bookmark card',
+        }
       }
 
       if (shape.type === 'note') {
         const text = richTextToPlainText(shape.props.richText)
+        if (!text) return null
         return {
           id: shape.id,
           type: 'note',
-          title: text.split('\n')[0]?.slice(0, 42) || 'Nota salva',
-          subtitle: 'Nota editavel dentro da pasta',
-        } satisfies SavedItemSummary
+          title: text.split('\n')[0]?.slice(0, 52) || 'Sticky note',
+          subtitle: 'Note',
+        }
       }
 
       if (shape.type === 'text') {
-        if (linkedTextShapeIds.has(shape.id)) return null
         const text = richTextToPlainText(shape.props.richText)
         if (!text) return null
         return {
           id: shape.id,
           type: 'text',
-          title: text.split('\n')[0]?.slice(0, 42) || 'Texto salvo',
-          subtitle: text.includes('\n') ? 'Texto com mais conteudo' : 'Texto editavel',
-        } satisfies SavedItemSummary
+          title: text.split('\n')[0]?.slice(0, 52) || 'Text block',
+          subtitle: 'Text',
+        }
       }
 
       return null
     })
-    .filter((item): item is SavedItemSummary => item !== null)
-}
-
-function getSavedItemTypeLabel(item: SavedItemSummary) {
-  if (item.type === 'media') return 'Video'
-  if (item.type === 'bookmark') return 'Link'
-  if (item.type === 'image') return 'Print'
-  if (item.type === 'note') return 'Nota'
-  return 'Texto'
-}
-
-function rangesOverlap(startA: number, endA: number, startB: number, endB: number) {
-  return Math.min(endA, endB) - Math.max(startA, startB) > 0
-}
-
-function getMeasurementOverlay(editor: Editor): MeasurementOverlay {
-  const selectedShapeIds = editor.getSelectedShapeIds()
-  const viewportBounds = editor.getViewportScreenBounds()
-
-  if (selectedShapeIds.length !== 1) {
-    return { guides: [], width: viewportBounds.width, height: viewportBounds.height }
-  }
-
-  const selectedBounds = editor.getShapePageBounds(selectedShapeIds[0])
-  if (!selectedBounds) {
-    return { guides: [], width: viewportBounds.width, height: viewportBounds.height }
-  }
-
-  const toLocalPoint = (point: { x: number; y: number }) => {
-    const screenPoint = editor.pageToScreen(point)
-    return {
-      x: screenPoint.x - viewportBounds.minX,
-      y: screenPoint.y - viewportBounds.minY,
-    }
-  }
-
-  const others = editor
-    .getCurrentPageShapes()
-    .filter((shape) => shape.id !== selectedShapeIds[0])
-    .map((shape) => ({ shape, bounds: editor.getShapePageBounds(shape.id) }))
-    .filter((entry): entry is { shape: TLShape; bounds: NonNullable<ReturnType<Editor['getShapePageBounds']>> } => Boolean(entry.bounds))
-
-  let leftGuide: MeasurementGuide | null = null
-  let rightGuide: MeasurementGuide | null = null
-  let topGuide: MeasurementGuide | null = null
-  let bottomGuide: MeasurementGuide | null = null
-
-  for (const entry of others) {
-    const otherBounds = entry.bounds
-
-    if (rangesOverlap(selectedBounds.minY, selectedBounds.maxY, otherBounds.minY, otherBounds.maxY)) {
-      const sharedCenterY =
-        Math.max(selectedBounds.minY, otherBounds.minY) +
-        (Math.min(selectedBounds.maxY, otherBounds.maxY) - Math.max(selectedBounds.minY, otherBounds.minY)) / 2
-
-      if (otherBounds.maxX <= selectedBounds.minX) {
-        const distance = selectedBounds.minX - otherBounds.maxX
-        if (!leftGuide || distance < leftGuide.distance) {
-          leftGuide = {
-            id: `${entry.shape.id}-left`,
-            orientation: 'horizontal',
-            start: toLocalPoint({ x: otherBounds.maxX, y: sharedCenterY }),
-            end: toLocalPoint({ x: selectedBounds.minX, y: sharedCenterY }),
-            distance,
-          }
-        }
-      }
-
-      if (otherBounds.minX >= selectedBounds.maxX) {
-        const distance = otherBounds.minX - selectedBounds.maxX
-        if (!rightGuide || distance < rightGuide.distance) {
-          rightGuide = {
-            id: `${entry.shape.id}-right`,
-            orientation: 'horizontal',
-            start: toLocalPoint({ x: selectedBounds.maxX, y: sharedCenterY }),
-            end: toLocalPoint({ x: otherBounds.minX, y: sharedCenterY }),
-            distance,
-          }
-        }
-      }
-    }
-
-    if (rangesOverlap(selectedBounds.minX, selectedBounds.maxX, otherBounds.minX, otherBounds.maxX)) {
-      const sharedCenterX =
-        Math.max(selectedBounds.minX, otherBounds.minX) +
-        (Math.min(selectedBounds.maxX, otherBounds.maxX) - Math.max(selectedBounds.minX, otherBounds.minX)) / 2
-
-      if (otherBounds.maxY <= selectedBounds.minY) {
-        const distance = selectedBounds.minY - otherBounds.maxY
-        if (!topGuide || distance < topGuide.distance) {
-          topGuide = {
-            id: `${entry.shape.id}-top`,
-            orientation: 'vertical',
-            start: toLocalPoint({ x: sharedCenterX, y: otherBounds.maxY }),
-            end: toLocalPoint({ x: sharedCenterX, y: selectedBounds.minY }),
-            distance,
-          }
-        }
-      }
-
-      if (otherBounds.minY >= selectedBounds.maxY) {
-        const distance = otherBounds.minY - selectedBounds.maxY
-        if (!bottomGuide || distance < bottomGuide.distance) {
-          bottomGuide = {
-            id: `${entry.shape.id}-bottom`,
-            orientation: 'vertical',
-            start: toLocalPoint({ x: sharedCenterX, y: selectedBounds.maxY }),
-            end: toLocalPoint({ x: sharedCenterX, y: otherBounds.minY }),
-            distance,
-          }
-        }
-      }
-    }
-  }
-
-  return {
-    guides: [leftGuide, rightGuide, topGuide, bottomGuide].filter(
-      (guide): guide is MeasurementGuide => Boolean(guide)
-    ),
-    width: viewportBounds.width,
-    height: viewportBounds.height,
-  }
+    .filter((item): item is AssetSummary => item !== null)
 }
 
 function getYouTubeVideoInfo(raw: string): { id: string; layout: 'video' | 'short' } | null {
@@ -390,14 +226,8 @@ function normalizeYouTubeEmbed(raw: string): { url: string; layout: 'video' | 's
     const params = new URLSearchParams()
     params.set('playsinline', '1')
     params.set('rel', '0')
-
-    if (url.hostname.replace(/^www\./, '') === 'youtu.be') {
-      const start = url.searchParams.get('t')
-      if (start) params.set('start', start)
-    } else {
-      const start = url.searchParams.get('t')
-      if (start) params.set('start', start)
-    }
+    const start = url.searchParams.get('t')
+    if (start) params.set('start', start)
 
     const search = params.toString()
     return {
@@ -413,9 +243,7 @@ function normalizeYouTubeEmbed(raw: string): { url: string; layout: 'video' | 's
 }
 
 function extractUrlsInOrder(text: string): string[] {
-  return (
-    text.match(/https?:\/\/[^\s]+/g)?.map((match) => match.trim().replace(/[),.;!?]+$/, '')) ?? []
-  )
+  return text.match(/https?:\/\/[^\s]+/g)?.map((match) => match.trim().replace(/[),.;!?]+$/, '')) ?? []
 }
 
 function normalizeInstagramReelUrl(raw: string): string | null {
@@ -477,155 +305,31 @@ function extractMediaPasteItems(text: string): MediaPasteItem[] {
 function isEditableElement(target: EventTarget | null) {
   if (!(target instanceof HTMLElement)) return false
 
-  return (
-    target instanceof HTMLInputElement ||
-    target instanceof HTMLTextAreaElement ||
-    target.isContentEditable
-  )
+  return target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target.isContentEditable
 }
 
 function getMediaItemSize(item: MediaPasteItem) {
   if (item.kind === 'youtube' && item.layout === 'video') {
-    return { width: 800, height: 450 }
+    return { width: 760, height: 428 }
   }
 
   if (item.kind === 'bookmark') {
-    return { width: 420, height: 480 }
+    return { width: 420, height: 260 }
   }
 
   return { width: 340, height: 604 }
 }
 
-function getMediaItemLabel(item: MediaPasteItem) {
-  if (item.kind === 'youtube') {
-    return item.layout === 'short' ? 'Short do YouTube' : 'Video do YouTube'
-  }
-
-  if (item.kind === 'instagram-reel') {
-    return 'Reel do Instagram'
-  }
-
-  return 'Link salvo'
+function getCanvasCenter(editor: Editor, point?: { x: number; y: number }) {
+  return point ?? editor.getViewportPageBounds().center
 }
 
-function getCurrentPortraits(editor: Editor): PortraitEntry[] {
-  return editor
-    .getCurrentPageShapes()
-    .filter(
-      (shape): shape is TLShape & { type: 'frame'; props: { name: string } } =>
-        shape.type === 'frame' && typeof shape.props?.name === 'string' && shape.props.name.startsWith(PORTRAIT_NAME_PREFIX)
-    )
-    .sort((a, b) => a.x - b.x)
-    .map((shape) => ({ id: shape.id, name: shape.props.name }))
-}
+function createTextShape(editor: Editor, text: string, point?: { x: number; y: number }) {
+  const trimmed = text.trim()
+  if (!trimmed) return null
 
-function getBoundsForShapeIds(editor: Editor, shapeIds: TLShapeId[]) {
-  const bounds = shapeIds
-    .map((id) => editor.getShapePageBounds(id))
-    .filter((bound): bound is NonNullable<typeof bound> => Boolean(bound))
-
-  if (!bounds.length) return null
-
-  const minX = Math.min(...bounds.map((bound) => bound.minX))
-  const minY = Math.min(...bounds.map((bound) => bound.minY))
-  const maxX = Math.max(...bounds.map((bound) => bound.maxX))
-  const maxY = Math.max(...bounds.map((bound) => bound.maxY))
-
-  return {
-    x: minX,
-    y: minY,
-    width: maxX - minX,
-    height: maxY - minY,
-    center: {
-      x: minX + (maxX - minX) / 2,
-      y: minY + (maxY - minY) / 2,
-    },
-  }
-}
-
-function fitShapesToPortrait(editor: Editor, shapeIds: TLShapeId[], portraitId: TLShapeId) {
-  if (!shapeIds.length) return
-
-  const portraitBounds = editor.getShapePageBounds(portraitId)
-  const contentBounds = getBoundsForShapeIds(editor, shapeIds)
-  if (!portraitBounds || !contentBounds) return
-
-  const targetWidth = Math.max(1, portraitBounds.width - PORTRAIT_PADDING * 2)
-  const targetHeight = Math.max(1, portraitBounds.height - PORTRAIT_PADDING * 2)
-  const scale = Math.min(targetWidth / contentBounds.width, targetHeight / contentBounds.height, 1)
-
-  editor.run(() => {
-    if (Number.isFinite(scale) && scale > 0 && scale !== 1) {
-      shapeIds.forEach((shapeId) => {
-        editor.resizeShape(shapeId, { x: scale, y: scale }, { scaleOrigin: contentBounds.center })
-      })
-    }
-
-    const fittedBounds = getBoundsForShapeIds(editor, shapeIds)
-    if (!fittedBounds) return
-
-    const deltaX = portraitBounds.center.x - fittedBounds.center.x
-    const deltaY = portraitBounds.center.y - fittedBounds.center.y
-
-    editor.updateShapes(
-      shapeIds
-        .map((shapeId) => editor.getShape(shapeId))
-        .filter((shape): shape is TLShape => Boolean(shape))
-        .map((shape) => ({
-          id: shape.id,
-          type: shape.type,
-          x: shape.x + deltaX,
-          y: shape.y + deltaY,
-        }))
-    )
-  })
-}
-
-function getSelectedShapeIdsEligibleForPortrait(editor: Editor) {
-  return editor
-    .getSelectedShapeIds()
-    .filter((shapeId) => {
-      const shape = editor.getShape(shapeId)
-      return shape && shape.type !== 'frame'
-    })
-}
-
-function organizeMovedShapesInFolder(editor: Editor, shapeIds: TLShapeId[]) {
-  const movedBounds = getBoundsForShapeIds(editor, shapeIds)
-  if (!movedBounds) return
-
-  const otherBounds = editor
-    .getCurrentPageShapes()
-    .filter((shape) => !shapeIds.includes(shape.id))
-    .map((shape) => editor.getShapePageBounds(shape.id))
-    .filter((bound): bound is NonNullable<typeof bound> => Boolean(bound))
-
-  const nextY = otherBounds.length
-    ? Math.max(...otherBounds.map((bound) => bound.maxY)) + FOLDER_STACK_GAP
-    : FOLDER_STACK_ORIGIN_Y
-
-  const deltaX = FOLDER_STACK_ORIGIN_X - movedBounds.x
-  const deltaY = nextY - movedBounds.y
-
-  editor.updateShapes(
-    shapeIds
-      .map((shapeId) => editor.getShape(shapeId))
-      .filter((shape): shape is TLShape => Boolean(shape))
-      .map((shape) => ({
-        id: shape.id,
-        type: shape.type,
-        x: shape.x + deltaX,
-        y: shape.y + deltaY,
-      }))
-  )
-}
-
-function createTextItemFromPaste(editor: Editor, plainText: string, point?: { x: number; y: number }) {
-  const trimmedText = plainText.trim()
-  if (!trimmedText) return null
-
-  const center = point ?? editor.getViewportPageBounds().center
-  const isNote = trimmedText.includes('\n') || trimmedText.length > 140
+  const center = getCanvasCenter(editor, point)
+  const isNote = trimmed.includes('\n') || trimmed.length > 140
   const id = createShapeId()
 
   if (isNote) {
@@ -634,9 +338,9 @@ function createTextItemFromPaste(editor: Editor, plainText: string, point?: { x:
         id,
         type: 'note',
         x: center.x - 120,
-        y: center.y - 110,
+        y: center.y - 120,
         props: {
-          richText: toRichText(trimmedText),
+          richText: toRichText(trimmed),
           size: 'm',
           font: 'sans',
         },
@@ -648,50 +352,41 @@ function createTextItemFromPaste(editor: Editor, plainText: string, point?: { x:
         id,
         type: 'text',
         x: center.x - 180,
-        y: center.y - 30,
+        y: center.y - 36,
         props: {
           w: 360,
           size: 'm',
           font: 'sans',
-          richText: toRichText(trimmedText),
+          richText: toRichText(trimmed),
         },
       },
     ])
   }
 
-  organizeMovedShapesInFolder(editor, [id])
   editor.setSelectedShapes([id])
-
-  return {
-    id,
-    type: isNote ? 'note' : 'text',
-  }
+  return id
 }
 
 function createMediaItems(editor: Editor, items: MediaPasteItem[], point?: { x: number; y: number }) {
-  const center = point ?? editor.getViewportPageBounds().center
-  const gap = 40
-  const columns = items.length === 1 ? 1 : Math.min(2, items.length)
+  const center = getCanvasCenter(editor, point)
+  const gap = 32
+  const columns = items.length > 1 ? Math.min(2, items.length) : 1
   const sizedItems = items.map((item) => ({ item, ...getMediaItemSize(item) }))
   const rowCount = Math.ceil(sizedItems.length / columns)
   const rowHeights = Array.from({ length: rowCount }, (_, rowIndex) =>
     Math.max(...sizedItems.slice(rowIndex * columns, rowIndex * columns + columns).map((item) => item.height))
   )
-  const totalHeight =
-    rowHeights.reduce((sum, height) => sum + height, 0) + gap * Math.max(0, rowHeights.length - 1)
+  const totalHeight = rowHeights.reduce((sum, height) => sum + height, 0) + gap * Math.max(0, rowHeights.length - 1)
+
   let currentY = center.y - totalHeight / 2
   const createdShapeIds: TLShapeId[] = []
 
   for (let rowIndex = 0; rowIndex < rowCount; rowIndex += 1) {
     const rowItems = sizedItems.slice(rowIndex * columns, rowIndex * columns + columns)
-    const rowWidth =
-      rowItems.reduce((sum, item) => sum + item.width, 0) + gap * Math.max(0, rowItems.length - 1)
+    const rowWidth = rowItems.reduce((sum, item) => sum + item.width, 0) + gap * Math.max(0, rowItems.length - 1)
     let currentX = center.x - rowWidth / 2
 
     for (const sizedItem of rowItems) {
-      const labelId = createShapeId()
-      const labelText = getMediaItemLabel(sizedItem.item)
-
       if (sizedItem.item.kind === 'youtube') {
         const id = createShapeId()
         editor.createShapes([
@@ -706,20 +401,8 @@ function createMediaItems(editor: Editor, items: MediaPasteItem[], point?: { x: 
               url: sizedItem.item.url,
             },
           },
-          {
-            id: labelId,
-            type: 'text',
-            x: currentX,
-            y: currentY + sizedItem.height + 12,
-            props: {
-              w: sizedItem.width,
-              size: 's',
-              font: 'sans',
-              richText: toRichText(labelText),
-            },
-          },
         ])
-        createdShapeIds.push(id, labelId)
+        createdShapeIds.push(id)
       } else if (sizedItem.item.kind === 'instagram-reel') {
         const id = createShapeId()
         editor.createShapes([
@@ -734,20 +417,8 @@ function createMediaItems(editor: Editor, items: MediaPasteItem[], point?: { x: 
               url: sizedItem.item.url,
             },
           },
-          {
-            id: labelId,
-            type: 'text',
-            x: currentX,
-            y: currentY + sizedItem.height + 12,
-            props: {
-              w: sizedItem.width,
-              size: 's',
-              font: 'sans',
-              richText: toRichText(labelText),
-            },
-          },
         ])
-        createdShapeIds.push(id, labelId)
+        createdShapeIds.push(id)
       } else {
         const beforeIds = new Set(editor.getCurrentPageShapes().map((shape) => shape.id))
         createEmptyBookmarkShape(editor, sizedItem.item.url, {
@@ -758,23 +429,7 @@ function createMediaItems(editor: Editor, items: MediaPasteItem[], point?: { x: 
           .getCurrentPageShapes()
           .filter((shape) => !beforeIds.has(shape.id))
           .map((shape) => shape.id)
-
-        editor.createShapes([
-          {
-            id: labelId,
-            type: 'text',
-            x: currentX,
-            y: currentY + sizedItem.height + 12,
-            props: {
-              w: sizedItem.width,
-              size: 's',
-              font: 'sans',
-              richText: toRichText(labelText),
-            },
-          },
-        ])
-
-        createdShapeIds.push(...bookmarkIds, labelId)
+        createdShapeIds.push(...bookmarkIds)
       }
 
       currentX += sizedItem.width + gap
@@ -783,106 +438,121 @@ function createMediaItems(editor: Editor, items: MediaPasteItem[], point?: { x: 
     currentY += rowHeights[rowIndex] + gap
   }
 
+  if (createdShapeIds.length) {
+    editor.setSelectedShapes(createdShapeIds)
+  }
+
   return createdShapeIds
+}
+
+function getKnownStyle(editor: Editor | null, style: unknown, fallback: string) {
+  if (!editor) return fallback
+  const styles = editor.getSharedStyles()
+  return (styles.getAsKnownValue(style as never) ?? editor.getStyleForNextShape(style as never) ?? fallback) as string
+}
+
+function normalizeTool(editor: Editor | null, rawToolId: string): ToolbarTool {
+  if (!editor) return 'select'
+  if (rawToolId.startsWith('select')) return 'select'
+  if (rawToolId === 'geo') {
+    const geo = editor.getStyleForNextShape(GeoShapeGeoStyle)
+    return geo === 'ellipse' ? 'ellipse' : 'rectangle'
+  }
+  if (
+    rawToolId === 'hand' ||
+    rawToolId === 'line' ||
+    rawToolId === 'arrow' ||
+    rawToolId === 'text' ||
+    rawToolId === 'draw' ||
+    rawToolId === 'eraser'
+  ) {
+    return rawToolId
+  }
+  return 'select'
+}
+
+function ToolButton({
+  active,
+  compact,
+  icon: Icon,
+  label,
+  onClick,
+}: {
+  active: boolean
+  compact?: boolean
+  icon: typeof MousePointer2
+  label: string
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      className={`tool-button ${active ? 'tool-button--active' : ''} ${compact ? 'tool-button--compact' : ''}`}
+      onClick={onClick}
+      aria-label={label}
+      title={label}
+    >
+      <Icon size={18} />
+      {!compact && <span>{label}</span>}
+    </button>
+  )
 }
 
 function App() {
   const [editor, setEditor] = useState<Editor | null>(null)
+  const [boards, setBoards] = useState<BoardEntry[]>([])
+  const [activeBoardId, setActiveBoardId] = useState<TLPageId | null>(null)
+  const [selectedShapeIds, setSelectedShapeIds] = useState<TLShapeId[]>([])
+  const [assets, setAssets] = useState<AssetSummary[]>([])
+  const [activeTool, setActiveTool] = useState<ToolbarTool>('select')
+  const [zoomLevel, setZoomLevel] = useState(1)
+  const [canUndo, setCanUndo] = useState(false)
+  const [canRedo, setCanRedo] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [assetsOpen, setAssetsOpen] = useState(false)
+  const [pasteOpen, setPasteOpen] = useState(false)
+  const [pasteValue, setPasteValue] = useState('')
+  const [boardDialog, setBoardDialog] = useState<BoardDialogState>(null)
+  const [boardDraft, setBoardDraft] = useState('')
   const [mediaInteractionEnabled, setMediaInteractionEnabled] = useState(false)
-  const [folders, setFolders] = useState<FolderEntry[]>([])
-  const [activeFolderId, setActiveFolderId] = useState<TLPageId | null>(null)
-  const [, setPortraits] = useState<PortraitEntry[]>([])
-  const [activePortraitId, setActivePortraitId] = useState<TLShapeId | null>(null)
-  const [measurementOverlay, setMeasurementOverlay] = useState<MeasurementOverlay>({
-    guides: [],
-    width: 0,
-    height: 0,
-  })
-  const [savedItems, setSavedItems] = useState<SavedItemSummary[]>([])
-  const [libraryQuery, setLibraryQuery] = useState('')
-  const [workspaceView, setWorkspaceView] = useState<WorkspaceView>('library')
-  const [createMenuOpen, setCreateMenuOpen] = useState(false)
-  const [manualPasteOpen, setManualPasteOpen] = useState(false)
-  const [manualPasteValue, setManualPasteValue] = useState('')
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
-  const [folderDialog, setFolderDialog] = useState<FolderDialogState | null>(null)
-  const [folderDraft, setFolderDraft] = useState('')
-  const [sidebarDropActive, setSidebarDropActive] = useState(false)
-  const [sidebarDropFolderId, setSidebarDropFolderId] = useState<TLPageId | null>(null)
-  const [lastSavedItemId, setLastSavedItemId] = useState<TLShapeId | null>(null)
-  const folderCounterRef = useRef(1)
-  const sidebarDropFolderRef = useRef<TLPageId | null>(null)
+  const [statusMessage, setStatusMessage] = useState('Paste images, links, or text straight onto the board.')
   const recentPastedUrlsRef = useRef<Set<string>>(new Set())
   const recentPasteTimerRef = useRef<number | null>(null)
-  const pendingPortraitFitRef = useRef<TLShapeId | null>(null)
-  const [, setStatusMessage] = useState(
-    'Cole qualquer imagem com Ctrl+V ou Cmd+V diretamente no quadro.'
-  )
 
-  const libraryQueryNormalized = libraryQuery.trim().toLowerCase()
+  const shapeUtils = useMemo(() => [InstagramReelShapeUtil], [])
 
-  const tldrawComponents = useMemo<TLComponents>(
-    () => ({
-      StylePanel: null,
-      PageMenu: null,
-      NavigationPanel: null,
-      QuickActions: null,
-      MenuPanel: null,
-    }),
-    []
-  )
-
-  const shapeUtils = useMemo(
-    () => [InstagramReelShapeUtil],
-    []
-  )
-
-  const syncFolders = useCallback((instance: Editor) => {
-    const pages = instance.getPages().map((page) => ({ id: page.id, name: page.name }))
-    setFolders(pages)
-    setActiveFolderId(instance.getCurrentPageId())
-  }, [])
-
-  const syncPortraits = useCallback((instance: Editor) => {
-    const nextPortraits = getCurrentPortraits(instance)
-    setPortraits(nextPortraits)
-    setActivePortraitId((current) =>
-      current && nextPortraits.some((portrait) => portrait.id === current) ? current : nextPortraits[0]?.id ?? null
-    )
-  }, [])
-
-  const syncMeasurementOverlay = useCallback((instance: Editor) => {
-    setMeasurementOverlay(getMeasurementOverlay(instance))
-  }, [])
-
-  const syncSavedItems = useCallback((instance: Editor) => {
-    setSavedItems(getSavedItemSummaries(instance))
+  const syncUi = useCallback((instance: Editor) => {
+    setBoards(instance.getPages().map((page) => ({ id: page.id, name: page.name })))
+    setActiveBoardId(instance.getCurrentPageId())
+    setSelectedShapeIds([...instance.getSelectedShapeIds()])
+    setAssets(getAssetSummaries(instance))
+    setActiveTool(normalizeTool(instance, instance.getCurrentToolId()))
+    setZoomLevel(instance.getZoomLevel())
+    setCanUndo(instance.getCanUndo())
+    setCanRedo(instance.getCanRedo())
   }, [])
 
   useEffect(() => {
     if (!editor) return
 
-    syncFolders(editor)
-    syncPortraits(editor)
-    syncMeasurementOverlay(editor)
-    syncSavedItems(editor)
-  }, [editor, syncFolders, syncMeasurementOverlay, syncPortraits, syncSavedItems])
-
-  useEffect(() => {
-    if (!editor) return
-
-    const handleUpdate = () => {
-      syncFolders(editor)
-      syncPortraits(editor)
-      syncMeasurementOverlay(editor)
-      syncSavedItems(editor)
+    const page = editor.getCurrentPage()
+    if (page?.name === 'Page 1') {
+      editor.renamePage(page.id, 'Board 1')
     }
 
+    syncUi(editor)
+  }, [editor, syncUi])
+
+  useEffect(() => {
+    if (!editor) return
+
+    const handleUpdate = () => syncUi(editor)
     editor.on('update', handleUpdate)
+
     return () => {
       editor.off('update', handleUpdate)
     }
-  }, [editor, syncFolders, syncMeasurementOverlay, syncPortraits, syncSavedItems])
+  }, [editor, syncUi])
 
   useEffect(() => {
     if (!editor) return
@@ -890,50 +560,54 @@ function App() {
   }, [editor])
 
   useEffect(() => {
+    if (!statusMessage) return
+
+    const timeout = window.setTimeout(() => setStatusMessage(''), 2600)
+    return () => window.clearTimeout(timeout)
+  }, [statusMessage])
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setMenuOpen(false)
+        setAssetsOpen(false)
+        setPasteOpen(false)
+        setBoardDialog(null)
+      }
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
+
+  useEffect(() => {
     if (!editor) return
 
     editor.registerExternalContentHandler('url', ({ url, point }) => {
-      if (recentPastedUrlsRef.current.has(url)) {
-        return
-      }
+      if (recentPastedUrlsRef.current.has(url)) return
 
       const normalizedYouTube = normalizeYouTubeEmbed(url)
       if (normalizedYouTube) {
-        const createdIds = createMediaItems(
-          editor,
-          [{ kind: 'youtube', layout: normalizedYouTube.layout, url: normalizedYouTube.url }],
-          point
-        )
-        if (activePortraitId) {
-          fitShapesToPortrait(editor, createdIds, activePortraitId)
-        } else {
-          organizeMovedShapesInFolder(editor, createdIds)
+        const ids = createMediaItems(editor, [{ kind: 'youtube', layout: normalizedYouTube.layout, url: normalizedYouTube.url }], point)
+        if (ids.length) {
+          setMediaInteractionEnabled(true)
+          setStatusMessage(normalizedYouTube.layout === 'short' ? 'YouTube Short added.' : 'YouTube video added.')
         }
-        setLastSavedItemId(createdIds[0] ?? null)
-        setMediaInteractionEnabled(true)
-        setStatusMessage(
-          normalizedYouTube.layout === 'short'
-            ? 'Short do YouTube incorporado no quadro.'
-            : 'Video do YouTube incorporado no quadro.'
-        )
         return
       }
 
       const normalizedReel = normalizeInstagramReelUrl(url)
       if (normalizedReel) {
-        const createdIds = createMediaItems(editor, [{ kind: 'instagram-reel', url: normalizedReel }], point)
-        if (activePortraitId) {
-          fitShapesToPortrait(editor, createdIds, activePortraitId)
-        } else {
-          organizeMovedShapesInFolder(editor, createdIds)
+        const ids = createMediaItems(editor, [{ kind: 'instagram-reel', url: normalizedReel }], point)
+        if (ids.length) {
+          setMediaInteractionEnabled(true)
+          setStatusMessage('Instagram Reel added.')
         }
-        setLastSavedItemId(createdIds[0] ?? null)
-        setMediaInteractionEnabled(true)
-        setStatusMessage('Reel do Instagram incorporado no quadro.')
         return
       }
 
       createEmptyBookmarkShape(editor, url, point ?? editor.getViewportPageBounds().center)
+      setStatusMessage('Bookmark card added.')
     })
 
     return () => {
@@ -941,115 +615,67 @@ function App() {
     }
   }, [editor])
 
+  const insertPlainText = useCallback(
+    (text: string, point?: { x: number; y: number }) => {
+      if (!editor) return false
+
+      const trimmed = text.trim()
+      if (!trimmed) return false
+
+      const mediaItems = extractMediaPasteItems(trimmed)
+      if (mediaItems.length) {
+        createMediaItems(editor, mediaItems, point)
+        setMediaInteractionEnabled(true)
+        setStatusMessage(`${mediaItems.length} item${mediaItems.length > 1 ? 's' : ''} added to the board.`)
+        return true
+      }
+
+      const id = createTextShape(editor, trimmed, point)
+      if (id) {
+        setStatusMessage(trimmed.includes('\n') || trimmed.length > 140 ? 'Sticky note added.' : 'Text block added.')
+        return true
+      }
+
+      return false
+    },
+    [editor]
+  )
+
   useEffect(() => {
-    const onPaste = async (event: ClipboardEvent) => {
+    const onPaste = (event: ClipboardEvent) => {
       if (!editor) return
       if (isEditableElement(event.target)) return
 
-      const hasImage = Array.from(event.clipboardData?.items ?? []).some((item) =>
-        item.type.startsWith('image/')
-      )
-
+      const hasImage = Array.from(event.clipboardData?.items ?? []).some((item) => item.type.startsWith('image/'))
       if (hasImage) {
-        pendingPortraitFitRef.current = activePortraitId
         window.setTimeout(() => {
           if (!editor) return
-          const selectedShapeIds = editor.getSelectedShapeIds()
-          if (!selectedShapeIds.length) return
-
-          if (pendingPortraitFitRef.current) {
-            fitShapesToPortrait(editor, selectedShapeIds, pendingPortraitFitRef.current)
-          } else {
-            organizeMovedShapesInFolder(editor, selectedShapeIds)
+          const ids = editor.getSelectedShapeIds()
+          if (ids.length) {
+            setStatusMessage('Image pasted onto the board.')
           }
-
-          setLastSavedItemId(selectedShapeIds[0] ?? null)
-          pendingPortraitFitRef.current = null
-        }, 120)
-        setStatusMessage(
-          activePortraitId
-            ? 'Imagem detectada. Ela sera encaixada no retrato ativo.'
-            : 'Imagem detectada. Ela sera guardada e organizada nesta pasta.'
-        )
+        }, 140)
         return
       }
 
       const plainText = event.clipboardData?.getData('text/plain')
-      if (plainText) {
+      if (!plainText?.trim()) return
+
+      if (insertPlainText(plainText)) {
+        event.preventDefault()
+        event.stopPropagation()
+        if (typeof event.stopImmediatePropagation === 'function') {
+          event.stopImmediatePropagation()
+        }
+
         const mediaItems = extractMediaPasteItems(plainText)
-
         if (mediaItems.length) {
-          event.preventDefault()
-          event.stopPropagation()
-
-          if (typeof event.stopImmediatePropagation === 'function') {
-            event.stopImmediatePropagation()
-          }
-
           recentPastedUrlsRef.current = new Set(mediaItems.map((item) => item.url))
-          if (recentPasteTimerRef.current) {
-            window.clearTimeout(recentPasteTimerRef.current)
-          }
+          if (recentPasteTimerRef.current) window.clearTimeout(recentPasteTimerRef.current)
           recentPasteTimerRef.current = window.setTimeout(() => {
             recentPastedUrlsRef.current.clear()
             recentPasteTimerRef.current = null
-          }, 300)
-
-          const createdIds = createMediaItems(editor, mediaItems, activePortraitId ? editor.getShapePageBounds(activePortraitId)?.center : undefined)
-          if (activePortraitId) {
-            fitShapesToPortrait(editor, createdIds, activePortraitId)
-          } else {
-            organizeMovedShapesInFolder(editor, createdIds)
-          }
-          setLastSavedItemId(createdIds[0] ?? null)
-          setMediaInteractionEnabled(true)
-          if (activePortraitId) {
-            const bounds = editor.getShapePageBounds(activePortraitId)
-            if (bounds) editor.zoomToBounds(bounds, { targetZoom: Math.min(1, editor.getZoomLevel()) })
-          } else {
-            editor.zoomToFit()
-          }
-
-          const videosCount = mediaItems.filter(
-            (item) => item.kind === 'youtube' && item.layout === 'video'
-          ).length
-          const shortsCount = mediaItems.filter(
-            (item) => item.kind === 'youtube' && item.layout === 'short'
-          ).length
-          const reelsCount = mediaItems.filter((item) => item.kind === 'instagram-reel').length
-          const cardsCount = mediaItems.filter((item) => item.kind === 'bookmark').length
-
-          setStatusMessage(
-            [
-              videosCount ? `${videosCount} video${videosCount > 1 ? 's' : ''}` : '',
-              shortsCount ? `${shortsCount} short${shortsCount > 1 ? 's' : ''}` : '',
-              reelsCount ? `${reelsCount} reel${reelsCount > 1 ? 's' : ''}` : '',
-              cardsCount ? `${cardsCount} card${cardsCount > 1 ? 's' : ''}` : '',
-            ]
-              .filter(Boolean)
-              .join(' + ') + ' adicionados ao quadro.'
-          )
-          return
-        }
-
-        const trimmedText = plainText.trim()
-        if (trimmedText) {
-          event.preventDefault()
-          event.stopPropagation()
-
-          if (typeof event.stopImmediatePropagation === 'function') {
-            event.stopImmediatePropagation()
-          }
-
-          const createdItem = createTextItemFromPaste(editor, trimmedText)
-          if (createdItem) {
-            setLastSavedItemId(createdItem.id)
-            setStatusMessage(
-              createdItem.type === 'note'
-                ? 'Nota colada e guardada nesta pasta.'
-                : 'Texto colado e guardado como item editavel nesta pasta.'
-            )
-          }
+          }, 350)
         }
       }
     }
@@ -1062,1371 +688,690 @@ function App() {
         recentPasteTimerRef.current = null
       }
     }
-  }, [activePortraitId, editor])
+  }, [editor, insertPlainText])
 
-  const saveManualPastedText = useCallback(() => {
-    if (!editor) return
+  const hydratePasteFromClipboard = useCallback(async () => {
+    if (pasteValue.trim()) return
 
-    const createdItem = createTextItemFromPaste(editor, manualPasteValue)
-    if (!createdItem) {
-      setStatusMessage('Cole algum texto antes de salvar.')
-      return
+    try {
+      const text = await navigator.clipboard.readText()
+      if (text.trim()) setPasteValue(text)
+    } catch {
+      // noop
     }
+  }, [pasteValue])
 
-    setLastSavedItemId(createdItem.id)
-    setManualPasteOpen(false)
-    setManualPasteValue('')
-    setStatusMessage(
-      createdItem.type === 'note'
-        ? 'Nota salva manualmente nesta pasta.'
-        : 'Texto salvo manualmente nesta pasta.'
-    )
-  }, [editor, manualPasteValue])
+  const openPastePanel = useCallback(() => {
+    setMenuOpen(false)
+    setAssetsOpen(false)
+    setPasteOpen(true)
+    void hydratePasteFromClipboard()
+  }, [hydratePasteFromClipboard])
 
   const pasteFromClipboard = useCallback(async () => {
     if (!editor) return
 
     try {
-      const plainText = await navigator.clipboard.readText()
-      const trimmedText = plainText.trim()
-
-      if (!trimmedText) {
-        setStatusMessage('Copie um texto, link, reel ou short antes de usar Colar.')
+      const text = await navigator.clipboard.readText()
+      if (!text.trim()) {
+        setStatusMessage('Copy something first.')
         return
       }
-
-      const mediaItems = extractMediaPasteItems(trimmedText)
-      if (mediaItems.length) {
-        const createdIds = createMediaItems(
-          editor,
-          mediaItems,
-          activePortraitId ? editor.getShapePageBounds(activePortraitId)?.center : undefined
-        )
-
-        if (activePortraitId) {
-          fitShapesToPortrait(editor, createdIds, activePortraitId)
-        } else {
-          organizeMovedShapesInFolder(editor, createdIds)
-        }
-
-        setLastSavedItemId(createdIds[0] ?? null)
-        setMediaInteractionEnabled(true)
-        setManualPasteOpen(false)
-        setStatusMessage('Conteudo do clipboard salvo nesta pasta.')
-        return
-      }
-
-      const createdItem = createTextItemFromPaste(editor, trimmedText)
-      if (!createdItem) {
-        setStatusMessage('Nao encontrei texto valido no clipboard.')
-        return
-      }
-
-      setLastSavedItemId(createdItem.id)
-      setManualPasteOpen(false)
-      setManualPasteValue('')
-      setStatusMessage(
-        createdItem.type === 'note'
-          ? 'Nota criada a partir do clipboard.'
-          : 'Texto criado a partir do clipboard.'
-      )
-    } catch {
-      setManualPasteOpen(true)
-      setStatusMessage('O navegador bloqueou o clipboard. Cole o texto manualmente na caixa que abriu.')
-    }
-  }, [activePortraitId, editor])
-
-  const openManualPastePanel = useCallback(async () => {
-    setCreateMenuOpen(false)
-    setManualPasteOpen(true)
-
-    if (manualPasteValue.trim()) return
-
-    try {
-      const plainText = await navigator.clipboard.readText()
-      if (plainText.trim()) {
-        setManualPasteValue(plainText)
+      if (insertPlainText(text)) {
+        setPasteOpen(false)
+        setPasteValue('')
       }
     } catch {
-      // keep panel open for manual paste
+      setStatusMessage('Clipboard was blocked. Paste manually in the panel.')
+      setPasteOpen(true)
     }
-  }, [manualPasteValue])
+  }, [editor, insertPlainText])
 
-  const focusPortrait = useCallback(
-    (portraitId: TLShapeId) => {
+  const saveManualPaste = useCallback(() => {
+    if (insertPlainText(pasteValue)) {
+      setPasteOpen(false)
+      setPasteValue('')
+    }
+  }, [insertPlainText, pasteValue])
+
+  const activateTool = useCallback(
+    (tool: ToolbarTool) => {
       if (!editor) return
-      const bounds = editor.getShapePageBounds(portraitId)
-      if (!bounds) return
 
-      const selectedShapeIds = getSelectedShapeIdsEligibleForPortrait(editor)
-      const hasImageSelection = selectedShapeIds.some((shapeId) => editor.getShape(shapeId)?.type === 'image')
+      editor.run(() => {
+        if (tool === 'rectangle' || tool === 'ellipse') {
+          editor.setStyleForNextShapes(GeoShapeGeoStyle, tool)
+          editor.setCurrentTool('geo')
+        } else {
+          editor.setCurrentTool(tool)
+        }
+      })
 
-      setActivePortraitId(portraitId)
-
-      if (hasImageSelection) {
-        fitShapesToPortrait(editor, selectedShapeIds, portraitId)
-        editor.setSelectedShapes(selectedShapeIds)
-        editor.zoomToBounds(bounds, { targetZoom: Math.min(1, editor.getZoomLevel()) })
-        setStatusMessage('Print ajustado automaticamente ao retrato selecionado.')
-        return
-      }
-
-      editor.setSelectedShapes([portraitId])
-      editor.zoomToBounds(bounds, { targetZoom: Math.min(1, editor.getZoomLevel()) })
-      setStatusMessage('Retrato selecionado para receber o proximo conteudo.')
+      setActiveTool(tool)
     },
     [editor]
   )
 
-  const openSavedItemInCanvas = useCallback(
+  const focusShape = useCallback(
     (shapeId: TLShapeId) => {
       if (!editor) return
-      setWorkspaceView('edit')
       const bounds = editor.getShapePageBounds(shapeId)
       if (!bounds) return
       editor.setSelectedShapes([shapeId])
       editor.zoomToBounds(bounds, { targetZoom: Math.min(1, editor.getZoomLevel()) })
+      setAssetsOpen(false)
     },
     [editor]
   )
 
-  const focusCanvas = useCallback(() => {
-    if (!editor) return
-    editor.zoomToFit()
-    setStatusMessage('Canvas centralizado. Cole imagens ou comece a desenhar.')
-  }, [editor])
+  const createBoard = useCallback(() => {
+    const nextIndex = boards.length + 1
+    setBoardDraft(`Board ${nextIndex}`)
+    setBoardDialog({ mode: 'create' })
+    setMenuOpen(false)
+  }, [boards.length])
 
-  const createPortrait = useCallback(() => {
-    if (!editor) return
+  const renameBoard = useCallback(() => {
+    if (!editor || !activeBoardId) return
+    const page = editor.getPage(activeBoardId)
+    if (!page) return
+    setBoardDraft(page.name)
+    setBoardDialog({ mode: 'rename' })
+    setMenuOpen(false)
+  }, [activeBoardId, editor])
 
-    const existingPortraits = getCurrentPortraits(editor)
-    const center = editor.getViewportPageBounds().center
-    const lastPortraitId = existingPortraits.at(-1)?.id
-    const lastBounds = lastPortraitId ? editor.getShapePageBounds(lastPortraitId) : null
-    const id = createShapeId()
-    const portraitNumber = existingPortraits.length + 1
-    const x = lastBounds ? lastBounds.maxX + PORTRAIT_GAP : center.x - PORTRAIT_WIDTH / 2
-    const y = lastBounds ? lastBounds.minY : center.y - PORTRAIT_HEIGHT / 2
+  const submitBoardDialog = useCallback(() => {
+    if (!editor || !boardDialog) return
 
-    editor.createShapes([
-      {
-        id,
-        type: 'frame',
-        x,
-        y,
-        props: {
-          w: PORTRAIT_WIDTH,
-          h: PORTRAIT_HEIGHT,
-          name: `${PORTRAIT_NAME_PREFIX}${portraitNumber}`,
-        },
-      },
-    ])
-
-    syncPortraits(editor)
-    setWorkspaceView('edit')
-    focusPortrait(id)
-  }, [editor, focusPortrait, syncPortraits])
-
-  const openFolder = useCallback(
-    (pageId: TLPageId) => {
-      if (!editor) return
-      editor.setCurrentPage(pageId)
-      setLastSavedItemId(null)
-      setWorkspaceView('library')
-      setMobileSidebarOpen(false)
-      syncFolders(editor)
-      syncPortraits(editor)
-      setStatusMessage('Pasta aberta no quadro.')
-    },
-    [editor, syncFolders, syncPortraits]
-  )
-
-  const moveSelectionToFolder = useCallback(
-    (pageId: TLPageId, shouldOrganize = false) => {
-      if (!editor) return
-
-      const selectedShapeIds = editor.getSelectedShapeIds()
-      if (!selectedShapeIds.length) {
-        setStatusMessage('Selecione algo no canvas antes de enviar para a pasta.')
-        return
-      }
-
-      editor.moveShapesToPage(selectedShapeIds, pageId)
-      setStatusMessage('Selecao enviada para a pasta.')
-      editor.setCurrentPage(pageId)
-      editor.setSelectedShapes(selectedShapeIds)
-      if (shouldOrganize) {
-        organizeMovedShapesInFolder(editor, selectedShapeIds)
-      }
-      syncFolders(editor)
-      syncPortraits(editor)
-      setStatusMessage(
-        shouldOrganize ? 'Item guardado na pasta e organizado automaticamente.' : 'Selecao enviada para a pasta.'
-      )
-    },
-    [editor, syncFolders, syncPortraits]
-  )
-
-  const createFolder = useCallback(() => {
-    const folderIndex = folderCounterRef.current
-    const defaultName = `Pasta ${folderIndex}`
-    setFolderDraft(defaultName)
-    setCreateMenuOpen(false)
-    setManualPasteOpen(false)
-    setFolderDialog({ mode: 'create' })
-  }, [])
-
-  const renameFolder = useCallback(
-    (pageId?: TLPageId) => {
-      if (!editor) return
-
-      const targetPageId = pageId ?? activeFolderId
-      if (!targetPageId) return
-
-      const folder = editor.getPage(targetPageId)
-      if (!folder) return
-
-      setFolderDraft(folder.name)
-      setCreateMenuOpen(false)
-      setManualPasteOpen(false)
-      setFolderDialog({ mode: 'rename', pageId: targetPageId })
-    },
-    [activeFolderId, editor, syncFolders]
-  )
-
-  const submitFolderDialog = useCallback(() => {
-    if (!editor || !folderDialog) return
-
-    const nextName = folderDraft.trim()
+    const nextName = boardDraft.trim()
     if (!nextName) {
-      setStatusMessage('Escolha um nome para a pasta.')
+      setStatusMessage('Choose a board name first.')
       return
     }
 
-    if (folderDialog.mode === 'create') {
-      folderCounterRef.current += 1
+    if (boardDialog.mode === 'create') {
       const pageId = PageRecordType.createId()
       editor.createPage({ id: pageId, name: nextName })
       editor.setCurrentPage(pageId)
-      setLastSavedItemId(null)
-      setWorkspaceView('library')
-      setMobileSidebarOpen(false)
-      syncFolders(editor)
-      syncPortraits(editor)
-      setStatusMessage(`${nextName} criada na lateral esquerda.`)
-    } else {
-      const pageId = folderDialog.pageId
-      if (!pageId) return
-      const folder = editor.getPage(pageId)
-      if (!folder) return
-      if (folder.name !== nextName) {
-        editor.renamePage(pageId, nextName)
-        syncFolders(editor)
-        setStatusMessage(`Pasta renomeada para "${nextName}".`)
-      }
+      setStatusMessage(`Created ${nextName}.`)
+    } else if (activeBoardId) {
+      editor.renamePage(activeBoardId, nextName)
+      setStatusMessage(`Renamed to ${nextName}.`)
     }
 
-    setFolderDialog(null)
-    setFolderDraft('')
-  }, [editor, folderDialog, folderDraft, syncFolders, syncPortraits])
+    setBoardDialog(null)
+    setBoardDraft('')
+  }, [activeBoardId, boardDialog, boardDraft, editor])
 
-  const renameSavedItem = useCallback(
-    (item: SavedItemSummary | null) => {
+  const openBoard = useCallback(
+    (pageId: TLPageId) => {
       if (!editor) return
-
-      const targetItem = item
-      if (!targetItem) {
-        setStatusMessage('Selecione um item salvo antes de renomear.')
-        return
-      }
-
-      const nextTitle = window.prompt('Novo nome do item', targetItem.title)?.trim()
-      if (!nextTitle || nextTitle === targetItem.title) return
-
-      if (targetItem.labelShapeId) {
-        const labelShape = editor.getShape(targetItem.labelShapeId)
-        if (labelShape?.type === 'text') {
-          editor.updateShapes([
-            {
-              id: labelShape.id,
-              type: 'text',
-              props: {
-                ...labelShape.props,
-                richText: toRichText(nextTitle),
-              },
-            },
-          ])
-          setLastSavedItemId(targetItem.id)
-          setStatusMessage(`Item renomeado para "${nextTitle}".`)
-          return
-        }
-      }
-
-      const shape = editor.getShape(targetItem.id)
-      if (shape?.type === 'text' || shape?.type === 'note') {
-        editor.updateShapes([
-          {
-            id: shape.id,
-            type: shape.type,
-            props: {
-              ...shape.props,
-              richText: toRichText(nextTitle),
-            },
-          },
-        ])
-        setLastSavedItemId(targetItem.id)
-        setStatusMessage(`Item renomeado para "${nextTitle}".`)
-        return
-      }
-
-      const bounds = editor.getShapePageBounds(targetItem.id)
-      if (!shape || !bounds) return
-
-      const labelId = createShapeId()
-      editor.createShapes([
-        {
-          id: labelId,
-          type: 'text',
-          x: bounds.minX,
-          y: bounds.maxY + 12,
-          props: {
-            w: bounds.width,
-            size: 's',
-            font: 'sans',
-            richText: toRichText(nextTitle),
-          },
-        },
-      ])
-      setLastSavedItemId(targetItem.id)
-      setStatusMessage(`Nome criado para "${nextTitle}".`)
+      editor.setCurrentPage(pageId)
+      setMenuOpen(false)
+      setAssetsOpen(false)
+      setStatusMessage('Board switched.')
     },
     [editor]
   )
 
-  const cropSelectedImage = useCallback(() => {
-    if (!editor) {
-      setStatusMessage('Selecione um print antes de iniciar o recorte.')
-      return
-    }
-
-    const selectedShapeId = editor.getSelectedShapeIds()[0]
-    if (!selectedShapeId) {
-      setStatusMessage('Selecione um print antes de iniciar o recorte.')
-      return
-    }
-
-    const shape = editor.getShape(selectedShapeId)
-    if (shape?.type !== 'image' || !editor.canCropShape(shape)) {
-      setStatusMessage('Selecione um print antes de iniciar o recorte.')
-      return
-    }
-
-    editor.setSelectedShapes([shape.id])
-    editor.setCroppingShape(shape.id)
-    setStatusMessage('Modo de recorte ativado. Ajuste a imagem no canvas.')
+  const clearBoard = useCallback(() => {
+    if (!editor) return
+    const ids = editor.getCurrentPageShapes().map((shape) => shape.id)
+    if (!ids.length) return
+    if (!window.confirm('Clear everything on this board?')) return
+    editor.deleteShapes(ids)
+    setStatusMessage('Board cleared.')
+    setMenuOpen(false)
   }, [editor])
 
-  const fitSelectedPrintToActivePortrait = useCallback(() => {
-    if (!editor || !activePortraitId) {
-      setStatusMessage('Selecione ou crie um retrato antes de ajustar o print.')
-      return
-    }
+  const duplicateSelection = useCallback(() => {
+    if (!editor || !selectedShapeIds.length) return
+    editor.duplicateShapes(selectedShapeIds)
+    setStatusMessage('Selection duplicated.')
+  }, [editor, selectedShapeIds])
 
-    const selectedShapeIds = getSelectedShapeIdsEligibleForPortrait(editor)
-    const hasImageSelection = selectedShapeIds.some((shapeId) => editor.getShape(shapeId)?.type === 'image')
+  const deleteSelection = useCallback(() => {
+    if (!editor || !selectedShapeIds.length) return
+    editor.deleteShapes(selectedShapeIds)
+    setStatusMessage('Selection deleted.')
+  }, [editor, selectedShapeIds])
 
-    if (!hasImageSelection) {
-      setStatusMessage('Selecione um print antes de ajustar ao retrato.')
-      return
-    }
+  const bringSelectionToFront = useCallback(() => {
+    if (!editor || !selectedShapeIds.length) return
+    editor.bringToFront(selectedShapeIds)
+    setStatusMessage('Selection brought to front.')
+  }, [editor, selectedShapeIds])
 
-    fitShapesToPortrait(editor, selectedShapeIds, activePortraitId)
-    editor.setSelectedShapes(selectedShapeIds)
-
-    const bounds = editor.getShapePageBounds(activePortraitId)
-    if (bounds) {
-      editor.zoomToBounds(bounds, { targetZoom: Math.min(1, editor.getZoomLevel()) })
-    }
-
-    setStatusMessage('Print ajustado ao retrato ativo.')
-  }, [activePortraitId, editor])
-
-  useEffect(() => {
-    if (!editor) return
-
-    let pointerDownInsideCanvas = false
-    let dragDetected = false
-
-    const finishDropMode = () => {
-      pointerDownInsideCanvas = false
-      dragDetected = false
-      sidebarDropFolderRef.current = null
-      setSidebarDropActive(false)
-      setSidebarDropFolderId(null)
-    }
-
-    const handlePointerDown = (event: PointerEvent) => {
-      if (!(event.target instanceof HTMLElement)) return
-      pointerDownInsideCanvas =
-        Boolean(event.target.closest('.canvas-stage')) && editor.getSelectedShapeIds().length > 0
-      dragDetected = false
-
-      if (!pointerDownInsideCanvas) {
-        finishDropMode()
-      }
-    }
-
-    const handlePointerMove = (event: PointerEvent) => {
-      if (!pointerDownInsideCanvas || !editor.getSelectedShapeIds().length) return
-
-      dragDetected = true
-      setSidebarDropActive(true)
-
-      const hoveredFolder = document
-        .elementFromPoint(event.clientX, event.clientY)
-        ?.closest<HTMLElement>('[data-folder-drop-id]')
-        ?.getAttribute('data-folder-drop-id') as TLPageId | null
-
-      sidebarDropFolderRef.current = hoveredFolder
-      setSidebarDropFolderId(hoveredFolder)
-    }
-
-    const handlePointerUp = () => {
-      const targetFolderId = sidebarDropFolderRef.current
-
-      if (pointerDownInsideCanvas && dragDetected && targetFolderId) {
-        moveSelectionToFolder(targetFolderId, true)
-      }
-
-      finishDropMode()
-    }
-
-    window.addEventListener('pointerdown', handlePointerDown, true)
-    window.addEventListener('pointermove', handlePointerMove, true)
-    window.addEventListener('pointerup', handlePointerUp, true)
-
-    return () => {
-      window.removeEventListener('pointerdown', handlePointerDown, true)
-      window.removeEventListener('pointermove', handlePointerMove, true)
-      window.removeEventListener('pointerup', handlePointerUp, true)
-    }
-  }, [editor, moveSelectionToFolder])
-
-  const createQuickNote = useCallback(() => {
-    if (!editor) return
-
-    const center = editor.getViewportPageBounds().center
-    const id = createShapeId()
-    editor.createShapes([
-      {
-        id,
-        type: 'note',
-        x: center.x - 120,
-        y: center.y - 110,
-        props: {
-          richText: toRichText('Nova nota'),
-          size: 'm',
-          font: 'sans',
-        },
-      },
-    ])
-    organizeMovedShapesInFolder(editor, [id])
-    editor.setSelectedShapes([id])
-    setLastSavedItemId(id)
-    setWorkspaceView('edit')
-    setStatusMessage('Nova nota criada. Clique duas vezes para editar o texto.')
+  const undo = useCallback(() => {
+    editor?.undo()
   }, [editor])
 
-  const createQuickText = useCallback(
-    (kind: 'title' | 'text') => {
-      if (!editor) return
-
-      const center = editor.getViewportPageBounds().center
-      const id = createShapeId()
-      const isTitle = kind === 'title'
-
-      editor.createShapes([
-        {
-          id,
-          type: 'text',
-          x: center.x - 180,
-          y: center.y - (isTitle ? 120 : 40),
-          props: {
-            w: isTitle ? 420 : 360,
-            size: isTitle ? 'xl' : 'm',
-            font: 'sans',
-            richText: toRichText(isTitle ? 'Novo titulo' : 'Novo texto'),
-          },
-        },
-      ])
-      organizeMovedShapesInFolder(editor, [id])
-      editor.setSelectedShapes([id])
-      setLastSavedItemId(id)
-      setWorkspaceView('edit')
-      setStatusMessage(isTitle ? 'Titulo criado para voce renomear.' : 'Texto criado para editar.')
-    },
-    [editor]
-  )
-
-  const setHandMode = useCallback(() => {
-    if (!editor) return
-    editor.setCurrentTool('hand')
+  const redo = useCallback(() => {
+    editor?.redo()
   }, [editor])
 
   const zoomIn = useCallback(() => {
-    if (!editor) return
-    editor.zoomIn()
+    editor?.zoomIn()
   }, [editor])
 
   const zoomOut = useCallback(() => {
-    if (!editor) return
-    editor.zoomOut()
+    editor?.zoomOut()
   }, [editor])
 
-  const boardCount = editor?.getCurrentPageShapes().length ?? 0
-  const activeFolder = folders.find((folder) => folder.id === activeFolderId) ?? null
-  const filteredFolders = useMemo(() => {
-    if (!libraryQueryNormalized) return folders
+  const zoomToFit = useCallback(() => {
+    editor?.zoomToFit()
+  }, [editor])
 
-    return folders.filter((folder) => folder.name.toLowerCase().includes(libraryQueryNormalized))
-  }, [folders, libraryQueryNormalized])
-  const filteredSavedItems = useMemo(() => {
-    if (!libraryQueryNormalized) return savedItems
+  const selectedShapes = useMemo(() => {
+    if (!editor) return []
+    return selectedShapeIds
+      .map((id) => editor.getShape(id))
+      .filter((shape): shape is TLShape => Boolean(shape))
+  }, [editor, selectedShapeIds])
 
-    return savedItems.filter((item) =>
-      `${item.title} ${item.subtitle} ${getSavedItemTypeLabel(item)}`
-        .toLowerCase()
-        .includes(libraryQueryNormalized)
-    )
-  }, [libraryQueryNormalized, savedItems])
-  const selectedSavedItem = useMemo(() => {
-    if (!editor) return null
+  const primarySelectedShape = selectedShapes[0] ?? null
+  const hasSelection = selectedShapes.length > 0
+  const isMediaSelection = selectedShapes.some(
+    (shape) => shape.type === 'embed' || shape.type === INSTAGRAM_REEL_SHAPE_TYPE
+  )
+  const hasTextSelection = selectedShapes.some((shape) => shape.type === 'text' || shape.type === 'note')
 
-    const selectedShapeId = editor.getSelectedShapeIds()[0]
-    if (!selectedShapeId) return null
+  const colorStyle = getKnownStyle(editor, DefaultColorStyle, 'black')
+  const fillStyle = getKnownStyle(editor, DefaultFillStyle, 'none')
+  const sizeStyle = getKnownStyle(editor, DefaultSizeStyle, 'm')
+  const dashStyle = getKnownStyle(editor, DefaultDashStyle, 'draw')
+  const fontStyle = getKnownStyle(editor, DefaultFontStyle, 'sans')
 
-    return (
-      savedItems.find((item) => item.id === selectedShapeId || item.labelShapeId === selectedShapeId) ?? null
-    )
-  }, [editor, savedItems, measurementOverlay])
-  const selectedImageShapeId = useMemo(() => {
-    if (!editor) return null
-    const selectedShapeId = editor.getSelectedShapeIds()[0]
-    if (!selectedShapeId) return null
-    const shape = editor.getShape(selectedShapeId)
-    return shape?.type === 'image' && editor.canCropShape(shape) ? shape.id : null
-  }, [editor, measurementOverlay])
-  const savedMediaCount = useMemo(
-    () => savedItems.filter((item) => item.type === 'media' || item.type === 'bookmark').length,
-    [savedItems]
+  const applyStyle = useCallback(
+    (style: unknown, value: string) => {
+      if (!editor) return
+      if (selectedShapeIds.length) {
+        editor.setStyleForSelectedShapes(style as never, value as never)
+      }
+      editor.setStyleForNextShapes(style as never, value as never)
+    },
+    [editor, selectedShapeIds.length]
   )
-  const savedTextCount = useMemo(
-    () => savedItems.filter((item) => item.type === 'note' || item.type === 'text').length,
-    [savedItems]
-  )
-  const savedImageCount = useMemo(
-    () => savedItems.filter((item) => item.type === 'image').length,
-    [savedItems]
-  )
-  const latestSavedItem = useMemo(
-    () => savedItems.find((item) => item.id === lastSavedItemId) ?? savedItems[0] ?? null,
-    [lastSavedItemId, savedItems]
-  )
+
+  const boardName = boards.find((board) => board.id === activeBoardId)?.name ?? 'Board'
 
   return (
-    <div className="app-shell accent-teal">
-      {mobileSidebarOpen && (
-        <button
-          type="button"
-          className="mobile-sidebar-scrim"
-          aria-label="Fechar menu lateral"
-          onClick={() => setMobileSidebarOpen(false)}
-        />
-      )}
+    <div className={`whiteboard-app ${mediaInteractionEnabled ? 'media-live' : 'media-locked'}`}>
+      <div className="canvas-shell">
+        <div className="canvas-grid-layer" aria-hidden="true" />
 
-      <aside className={`left-rail ${mobileSidebarOpen ? 'left-rail--open' : ''}`}>
-        <div className="left-rail-top">
-          <div className="brand-lockup brand-lockup--premium">
-            <div className="brand-mark">BV</div>
-            <div className="brand-lockup__copy">
-              <span className="brand-lockup__eyebrow">Premium capture library</span>
-              <strong>Biblioteca Visual</strong>
-              <span>Save prints, links, reels, shorts and notes in a clean, premium workspace.</span>
-            </div>
+        <header className="app-topbar">
+          <div className="app-topbar__left">
             <button
               type="button"
-              className="left-rail__close"
-              aria-label="Fechar menu"
-              onClick={() => setMobileSidebarOpen(false)}
-            >
-              <X size={18} />
-            </button>
-          </div>
-
-          <div className="sidebar-hero-card">
-            <div className="sidebar-hero-card__icon">
-              <Sparkles size={18} />
-            </div>
-            <div>
-              <strong>Design-first vault</strong>
-              <p>Built to collect references fast, browse beautifully, and edit only when needed.</p>
-            </div>
-          </div>
-
-          <div className="library-shortcuts" aria-label="Acoes rapidas">
-            <button
-              type="button"
-              className="library-action library-action--primary"
-              onClick={createFolder}
-              aria-label="Nova pasta"
-              title="Nova pasta"
-            >
-              <span className="library-action__icon">
-                <FolderPlus size={18} />
-              </span>
-              <span className="library-action__copy">
-                <strong>New folder</strong>
-                <span>Create a fresh collection for a new project, client, or moodboard.</span>
-              </span>
-              <ArrowRight size={16} className="library-action__arrow" />
-            </button>
-          </div>
-
-          <section className="library-search" aria-label="Busca da biblioteca">
-            <label className="library-search__field">
-              <Search size={16} />
-              <input
-                type="text"
-                value={libraryQuery}
-                onChange={(event) => setLibraryQuery(event.target.value)}
-                placeholder="Search folders, saved references and notes"
-                aria-label="Buscar na biblioteca"
-              />
-            </label>
-            {libraryQuery && (
-              <button type="button" className="library-search__clear" onClick={() => setLibraryQuery('')}>
-                Clear
-              </button>
-            )}
-          </section>
-
-          <section className="folder-stack" aria-label="Pastas do quadro">
-            <div className="folder-stack__header">
-              <div>
-                <span className="section-kicker">Collections</span>
-                <strong>Folders</strong>
-              </div>
-              <span>{filteredFolders.length}</span>
-            </div>
-
-            <div className={sidebarDropActive ? 'folder-list drag-active' : 'folder-list'}>
-              {filteredFolders.map((folder) => (
-                <div
-                  key={folder.id}
-                  data-folder-drop-id={folder.id}
-                  className={
-                    folder.id === sidebarDropFolderId
-                      ? 'folder-item drag-target'
-                      : folder.id === activeFolderId
-                        ? 'folder-item active'
-                        : 'folder-item'
-                  }
-                >
-                  <button type="button" className="folder-item__open" onClick={() => openFolder(folder.id)}>
-                    <span className="folder-item__dot" />
-                    <span className="folder-item__content">
-                      <span className="folder-item__name">{folder.name}</span>
-                      <span className="folder-item__meta">
-                        {folder.id === activeFolderId
-                          ? `${savedItems.length} items in view`
-                          : folder.id === sidebarDropFolderId
-                            ? 'Drop here to organize'
-                            : 'Open collection'}
-                      </span>
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    className="folder-item__send"
-                    aria-label={`Renomear ${folder.name}`}
-                    onClick={() => renameFolder(folder.id)}
-                  >
-                    <Pencil size={14} />
-                  </button>
-                </div>
-              ))}
-              {!filteredFolders.length && <div className="folder-list__empty">No folders match that search.</div>}
-            </div>
-          </section>
-        </div>
-
-        <div className="left-footer">
-          <span>{folders.length} collections</span>
-          <strong>{savedItems.length} saved assets</strong>
-        </div>
-      </aside>
-
-      <main className="workspace">
-        <header className="workspace-header">
-          <div className="workspace-header__leading">
-            <button
-              type="button"
-              className="workspace-header__menu-button"
-              aria-label="Abrir menu lateral"
-              onClick={() => setMobileSidebarOpen(true)}
+              className="floating-icon-button"
+              onClick={() => {
+                setMenuOpen((open) => !open)
+                setAssetsOpen(false)
+              }}
+              aria-label="Open main menu"
+              title="Main menu"
             >
               <Menu size={18} />
             </button>
-
-            <div className="workspace-header__intro">
-              <span className="workspace-header__eyebrow">
-                {workspaceView === 'library' ? 'Library view' : 'Canvas edit mode'}
-              </span>
-              <div className="workspace-header__title-row">
-                <h1>{activeFolder?.name ?? 'Biblioteca Visual'}</h1>
-                <span className="workspace-header__badge">
-                  {workspaceView === 'library' ? 'Browse' : 'Edit'}
-                </span>
-              </div>
-              <p>
-                {workspaceView === 'library'
-                  ? 'A premium reference library for visual inspiration, saved text, and fast retrieval.'
-                  : 'Edit your collection on the infinite canvas, crop assets, and fine-tune composition.'}
-              </p>
+            <div className="history-cluster">
+              <button
+                type="button"
+                className="floating-icon-button"
+                onClick={undo}
+                aria-label="Undo"
+                title="Undo"
+                disabled={!canUndo}
+              >
+                <Undo2 size={18} />
+              </button>
+              <button
+                type="button"
+                className="floating-icon-button"
+                onClick={redo}
+                aria-label="Redo"
+                title="Redo"
+                disabled={!canRedo}
+              >
+                <Redo2 size={18} />
+              </button>
             </div>
           </div>
 
-          <div className="workspace-header__actions">
+          <div className="app-topbar__center">
+            <div className="floating-toolbar" role="toolbar" aria-label="Drawing tools">
+              {TOOLBAR_TOOLS.map((tool) => (
+                <ToolButton
+                  key={tool.id}
+                  active={activeTool === tool.id}
+                  icon={tool.icon}
+                  label={tool.label}
+                  onClick={() => activateTool(tool.id)}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div className="app-topbar__right">
+            <div className="board-badge">
+              <span>{boardName}</span>
+            </div>
             <button
               type="button"
-              className="workspace-header__ghost"
-              onClick={() => renameFolder()}
+              className="floating-icon-button floating-icon-button--label"
+              onClick={openPastePanel}
+              aria-label="Open paste panel"
+              title="Paste"
             >
-              <Pencil size={16} />
-              <span>Rename</span>
-            </button>
-            <button
-              type="button"
-              className="workspace-header__secondary"
-              onClick={() => void openManualPastePanel()}
-            >
-              <Copy size={16} />
+              <Copy size={18} />
               <span>Paste</span>
             </button>
             <button
               type="button"
-              className="workspace-header__primary"
+              className="floating-icon-button floating-icon-button--label"
               onClick={() => {
-                setManualPasteOpen(false)
-                setCreateMenuOpen(true)
+                setAssetsOpen((open) => !open)
+                setMenuOpen(false)
               }}
+              aria-label="Open assets"
+              title="Assets"
             >
-              <Plus size={16} />
-              <span>New</span>
-            </button>
-            <button
-              type="button"
-              className="workspace-header__mode"
-              onClick={() => setWorkspaceView((view) => (view === 'library' ? 'edit' : 'library'))}
-            >
-              {workspaceView === 'library' ? <PenTool size={16} /> : <LayoutDashboard size={16} />}
-              <span>{workspaceView === 'library' ? 'Edit canvas' : 'Back to library'}</span>
+              <BookOpen size={18} />
+              <span>Assets</span>
             </button>
           </div>
         </header>
 
-        <section
-          className={`workspace-shell ${
-            mediaInteractionEnabled ? 'media-live' : 'media-locked'
-          } ${workspaceView === 'library' ? 'workspace-shell--library' : 'workspace-shell--edit'}`}
-        >
-          {createMenuOpen && (
-            <div className="quick-panel" role="dialog" aria-modal="true" aria-label="Criar novo item">
-              <div className="quick-panel__card">
-                <div className="quick-panel__copy">
-                  <span className="quick-panel__eyebrow">Create</span>
-                  <h2>What would you like to add?</h2>
-                  <p>Choose the right object for what you’re collecting so the library stays elegant and fast.</p>
+        {menuOpen && (
+          <>
+            <button
+              type="button"
+              className="overlay-scrim"
+              onClick={() => setMenuOpen(false)}
+              aria-label="Close main menu"
+            />
+            <aside className="floating-panel main-menu-panel">
+              <div className="floating-panel__header">
+                <div>
+                  <span className="panel-kicker">Boards</span>
+                  <h2>Workspace</h2>
                 </div>
-                <div className="quick-panel__grid">
-                  <button
-                    type="button"
-                    className="quick-panel__action"
-                    onClick={() => {
-                      setCreateMenuOpen(false)
-                      createQuickNote()
-                    }}
-                  >
-                    <StickyNote size={18} />
-                    <strong>Note</strong>
-                    <span>For longer thoughts, summaries, and captured ideas.</span>
-                  </button>
-                  <button
-                    type="button"
-                    className="quick-panel__action"
-                    onClick={() => {
-                      setCreateMenuOpen(false)
-                      createQuickText('text')
-                    }}
-                  >
-                    <MessageSquareText size={18} />
-                    <strong>Text</strong>
-                    <span>For a short line, quote, or compact snippet.</span>
-                  </button>
-                  <button
-                    type="button"
-                    className="quick-panel__action"
-                    onClick={() => {
-                      setCreateMenuOpen(false)
-                      createQuickText('title')
-                    }}
-                  >
-                    <Type size={18} />
-                    <strong>Title</strong>
-                    <span>For naming sections, themes, or presentation beats.</span>
-                  </button>
-                  <button
-                    type="button"
-                    className="quick-panel__action"
-                    onClick={() => {
-                      setCreateMenuOpen(false)
-                      workspaceView === 'edit' ? createPortrait() : setWorkspaceView('edit')
-                    }}
-                  >
-                    <RectangleVertical size={18} />
-                    <strong>{workspaceView === 'edit' ? 'Portrait frame' : 'Open canvas'}</strong>
-                    <span>
-                      {workspaceView === 'edit'
-                        ? 'Create a vertical layout frame for visual storytelling.'
-                        : 'Switch to the infinite canvas to arrange content freely.'}
-                    </span>
-                  </button>
-                </div>
-                <div className="quick-panel__footer">
-                  <button
-                    type="button"
-                    className="quick-panel__secondary"
-                    onClick={() => setCreateMenuOpen(false)}
-                  >
-                    Close
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {manualPasteOpen && (
-            <div className="manual-paste-modal" role="dialog" aria-modal="true" aria-label="Colar texto manualmente">
-              <div className="manual-paste-modal__card">
-                <div className="manual-paste-modal__copy">
-                  <span className="manual-paste-modal__eyebrow">Paste capture</span>
-                  <h2>Bring something into this collection</h2>
-                  <p>Paste text manually, or try reading the clipboard if your browser allows it.</p>
-                </div>
-                <textarea
-                  value={manualPasteValue}
-                  onChange={(event) => setManualPasteValue(event.target.value)}
-                  placeholder="Paste text, a note, a short description, or a reference title"
-                  autoFocus
-                />
-                <div className="manual-paste-modal__actions">
-                  <button type="button" onClick={() => void pasteFromClipboard()}>
-                    Use clipboard
-                  </button>
-                  <button
-                    type="button"
-                    className="manual-paste-modal__secondary"
-                    onClick={() => {
-                      setManualPasteOpen(false)
-                      setManualPasteValue('')
-                    }}
-                  >
-                    Cancel
-                  </button>
-                  <button type="button" onClick={saveManualPastedText}>
-                    Save to folder
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {folderDialog && (
-            <div className="folder-dialog" role="dialog" aria-modal="true" aria-label="Folder form">
-              <div className="folder-dialog__card">
-                <div className="folder-dialog__copy">
-                  <span className="folder-dialog__eyebrow">
-                    {folderDialog.mode === 'create' ? 'New collection' : 'Rename collection'}
-                  </span>
-                  <h2>
-                    {folderDialog.mode === 'create'
-                      ? 'Create a fresh space for your references'
-                      : 'Give this collection a clearer name'}
-                  </h2>
-                  <p>
-                    {folderDialog.mode === 'create'
-                      ? 'Use folders to separate clients, research themes, campaigns, or personal inspiration.'
-                      : 'A stronger label makes your archive easier to scan later.'}
-                  </p>
-                </div>
-                <label className="folder-dialog__field">
-                  <span>Collection name</span>
-                  <input
-                    type="text"
-                    value={folderDraft}
-                    onChange={(event) => setFolderDraft(event.target.value)}
-                    placeholder="Type a folder name"
-                    autoFocus
-                  />
-                </label>
-                <div className="folder-dialog__actions">
-                  <button
-                    type="button"
-                    className="folder-dialog__secondary"
-                    onClick={() => {
-                      setFolderDialog(null)
-                      setFolderDraft('')
-                    }}
-                  >
-                    Cancel
-                  </button>
-                  <button type="button" onClick={submitFolderDialog}>
-                    {folderDialog.mode === 'create' ? 'Create folder' : 'Save name'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {workspaceView === 'library' ? (
-            <div className="library-stage">
-              <section className="hero-panel">
-                <div className="hero-panel__copy">
-                  <span className="section-kicker">World-class visual capture</span>
-                  <h2>Everything you collect stays elegant, searchable, and ready to present.</h2>
-                  <p>
-                    Save references in seconds, keep them organized by folder, and switch into canvas mode only when
-                    you need layout control.
-                  </p>
-                  <div className="hero-panel__actions">
-                    <button
-                      type="button"
-                      className="hero-panel__primary"
-                      onClick={() => {
-                        setManualPasteOpen(false)
-                        setCreateMenuOpen(true)
-                      }}
-                    >
-                      <Plus size={16} />
-                      <span>Create item</span>
-                    </button>
-                    <button
-                      type="button"
-                      className="hero-panel__secondary"
-                      onClick={() => void openManualPastePanel()}
-                    >
-                      <Copy size={16} />
-                      <span>Paste into folder</span>
-                    </button>
-                  </div>
-                </div>
-
-                <div className="hero-panel__summary">
-                  <div className="metric-card">
-                    <span className="metric-card__label">Collections</span>
-                    <strong>{folders.length}</strong>
-                    <span>Organized spaces</span>
-                  </div>
-                  <div className="metric-card">
-                    <span className="metric-card__label">Saved items</span>
-                    <strong>{savedItems.length}</strong>
-                    <span>Ready to revisit</span>
-                  </div>
-                  <div className="metric-card">
-                    <span className="metric-card__label">Active folder</span>
-                    <strong>{activeFolder?.name ?? 'Main library'}</strong>
-                    <span>Current working context</span>
-                  </div>
-                </div>
-              </section>
-
-              <div className="library-content-grid">
-                <section className="content-panel">
-                  <div className="content-panel__header">
-                    <div>
-                      <span className="section-kicker">Folder contents</span>
-                      <h3>
-                        {filteredSavedItems.length
-                          ? `${filteredSavedItems.length} premium item${filteredSavedItems.length > 1 ? 's' : ''}`
-                          : 'Your folder is ready for its first saved item'}
-                      </h3>
-                    </div>
-                    <button type="button" className="content-panel__link" onClick={() => setWorkspaceView('edit')}>
-                      <span>Open canvas</span>
-                      <ChevronsRight size={16} />
-                    </button>
-                  </div>
-
-                  {filteredSavedItems.length ? (
-                    <div className="library-stage__grid">
-                      {filteredSavedItems.map((item) => (
-                        <article
-                          key={`gallery-${item.id}`}
-                          className={`gallery-card gallery-card--${item.type} ${
-                            item.id === lastSavedItemId ? 'gallery-card--fresh' : ''
-                          }`}
-                        >
-                          <div className="gallery-card__top">
-                            <span className="gallery-card__badge">{getSavedItemTypeLabel(item)}</span>
-                            <button
-                              type="button"
-                              className="gallery-card__icon"
-                              onClick={() => renameSavedItem(item)}
-                              aria-label={`Renomear ${item.title}`}
-                            >
-                              <Pencil size={14} />
-                            </button>
-                          </div>
-                          <div className="gallery-card__visual">
-                            {item.type === 'image' && item.previewUrl ? (
-                              <div className="gallery-card__preview">
-                                <img src={item.previewUrl} alt={item.title} className="gallery-card__image" />
-                              </div>
-                            ) : (
-                              <div className="gallery-card__placeholder">
-                                {item.type === 'media' ? (
-                                  <BookOpen size={24} />
-                                ) : item.type === 'bookmark' ? (
-                                  <Link2 size={24} />
-                                ) : item.type === 'note' || item.type === 'text' ? (
-                                  <MessageSquareText size={24} />
-                                ) : (
-                                  <Image size={24} />
-                                )}
-                              </div>
-                            )}
-                            <div className="gallery-card__content">
-                              <strong>{item.title}</strong>
-                              <span>{item.subtitle}</span>
-                            </div>
-                          </div>
-                          <div className="gallery-card__actions">
-                            <button type="button" onClick={() => openSavedItemInCanvas(item.id)}>
-                              <PenTool size={15} />
-                              <span>Edit</span>
-                            </button>
-                          </div>
-                        </article>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="capture-empty-state capture-empty-state--library">
-                      <div className="capture-empty-state__badge">Fast capture flow</div>
-                      <h2>{activeFolder?.name ?? 'Your library is ready'}</h2>
-                      <p>Paste a print, link, reel, short, note or title. The app will keep it clean and organized.</p>
-                      <div className="capture-empty-state__actions">
-                        <button type="button" onClick={() => void openManualPastePanel()}>
-                          <Copy size={16} />
-                          <span>Paste something</span>
-                        </button>
-                        <button type="button" onClick={createQuickNote}>
-                          <StickyNote size={16} />
-                          <span>New note</span>
-                        </button>
-                        <button type="button" onClick={createFolder}>
-                          <FolderPlus size={16} />
-                          <span>New folder</span>
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </section>
-
-                <aside className="insights-panel">
-                  <div className="insights-panel__card">
-                    <span className="section-kicker">At a glance</span>
-                    <div className="insights-panel__stats">
-                      <div className="insight-stat">
-                        <Image size={16} />
-                        <div>
-                          <strong>{savedImageCount}</strong>
-                          <span>Prints</span>
-                        </div>
-                      </div>
-                      <div className="insight-stat">
-                        <BookOpen size={16} />
-                        <div>
-                          <strong>{savedMediaCount}</strong>
-                          <span>Links & media</span>
-                        </div>
-                      </div>
-                      <div className="insight-stat">
-                        <MessageSquareText size={16} />
-                        <div>
-                          <strong>{savedTextCount}</strong>
-                          <span>Text blocks</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="insights-panel__card">
-                    <span className="section-kicker">Current collection</span>
-                    <h3>{activeFolder?.name ?? 'Untitled library'}</h3>
-                    <p>Use the canvas only when you need arrangement. Stay in the library when you just need to save and browse.</p>
-                    <div className="insights-panel__actions">
-                      <button type="button" onClick={() => renameFolder()}>
-                        <Pencil size={15} />
-                        <span>Rename</span>
-                      </button>
-                      <button type="button" onClick={() => setWorkspaceView('edit')}>
-                        <PenTool size={15} />
-                        <span>Edit mode</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="insights-panel__card insights-panel__card--feature">
-                    <span className="section-kicker">Latest saved</span>
-                    {latestSavedItem ? (
-                      <>
-                        <h3>{latestSavedItem.title}</h3>
-                        <p>{latestSavedItem.subtitle}</p>
-                        <button type="button" onClick={() => openSavedItemInCanvas(latestSavedItem.id)}>
-                          <span>Open latest item</span>
-                          <ArrowRight size={15} />
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <h3>Nothing saved yet</h3>
-                        <p>Start by pasting a reference or creating a note for this folder.</p>
-                        <button type="button" onClick={() => void openManualPastePanel()}>
-                          <span>Paste first item</span>
-                          <ArrowRight size={15} />
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </aside>
-              </div>
-            </div>
-          ) : (
-            <div className="edit-stage">
-              <div className="edit-stage__header">
-                <div className="edit-stage__copy">
-                  <span className="section-kicker">Canvas studio</span>
-                  <h2>Edit with precision when the layout matters</h2>
-                  <p>Crop, align, frame, and refine while preserving the same collection structure.</p>
-                </div>
-                <div className="edit-stage__actions">
-                  <button type="button" onClick={() => void openManualPastePanel()}>
-                    <Copy size={16} />
-                    <span>Paste</span>
-                  </button>
-                  <button type="button" onClick={createPortrait}>
-                    <RectangleVertical size={16} />
-                    <span>New portrait</span>
-                  </button>
-                  <button type="button" onClick={focusCanvas}>
-                    <BringToFront size={16} />
-                    <span>Focus canvas</span>
-                  </button>
-                </div>
-              </div>
-
-              {workspaceView === 'edit' && (selectedSavedItem || selectedImageShapeId || activePortraitId) && (
-                <div className="selection-actions">
-                  {selectedSavedItem && (
-                    <button type="button" onClick={() => renameSavedItem(selectedSavedItem)}>
-                      <Pencil size={15} />
-                      <span>Rename</span>
-                    </button>
-                  )}
-                  {selectedImageShapeId && activePortraitId && (
-                    <button type="button" onClick={fitSelectedPrintToActivePortrait}>
-                      <RectangleVertical size={15} />
-                      <span>Fit to portrait</span>
-                    </button>
-                  )}
-                  {selectedImageShapeId && (
-                    <button type="button" onClick={cropSelectedImage}>
-                      <Crop size={15} />
-                      <span>Crop</span>
-                    </button>
-                  )}
-                </div>
-              )}
-
-              <div className="canvas-stage">
-                {!boardCount && workspaceView === 'edit' && (
-                  <div className="capture-empty-state">
-                    <div className="capture-empty-state__badge">Canvas ready</div>
-                    <h2>{activeFolder?.name ?? 'Your workspace is ready'}</h2>
-                    <p>Paste an asset, create a text block, or add a portrait frame to start composing visually.</p>
-                    <div className="capture-empty-state__actions">
-                      <button type="button" onClick={() => void openManualPastePanel()}>
-                        <Copy size={16} />
-                        <span>Paste capture</span>
-                      </button>
-                      <button type="button" onClick={createQuickNote}>
-                        <StickyNote size={16} />
-                        <span>New note</span>
-                      </button>
-                      <button type="button" onClick={createPortrait}>
-                        <RectangleVertical size={16} />
-                        <span>Portrait frame</span>
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                <Tldraw
-                  components={tldrawComponents}
-                  persistenceKey="whiteboard-studio-autosave"
-                  onMount={setEditor}
-                  shapeUtils={shapeUtils}
-                  autoFocus
-                />
-                {measurementOverlay.guides.length > 0 && (
-                  <svg
-                    className="measurement-overlay"
-                    viewBox={`0 0 ${measurementOverlay.width} ${measurementOverlay.height}`}
-                    preserveAspectRatio="none"
-                    aria-hidden="true"
-                  >
-                    {measurementOverlay.guides.map((guide) => {
-                      const label = `${Math.round(guide.distance)} px`
-                      const labelWidth = label.length * 7 + 14
-                      const centerX = (guide.start.x + guide.end.x) / 2
-                      const centerY = (guide.start.y + guide.end.y) / 2
-                      const capSize = 7
-
-                      return (
-                        <g key={guide.id}>
-                          <line
-                            className="measurement-overlay__line"
-                            x1={guide.start.x}
-                            y1={guide.start.y}
-                            x2={guide.end.x}
-                            y2={guide.end.y}
-                          />
-                          {guide.orientation === 'horizontal' ? (
-                            <>
-                              <line
-                                className="measurement-overlay__cap"
-                                x1={guide.start.x}
-                                y1={guide.start.y - capSize}
-                                x2={guide.start.x}
-                                y2={guide.start.y + capSize}
-                              />
-                              <line
-                                className="measurement-overlay__cap"
-                                x1={guide.end.x}
-                                y1={guide.end.y - capSize}
-                                x2={guide.end.x}
-                                y2={guide.end.y + capSize}
-                              />
-                              <rect
-                                className="measurement-overlay__label-box"
-                                x={centerX - labelWidth / 2}
-                                y={centerY - 24}
-                                width={labelWidth}
-                                height={18}
-                                rx={9}
-                                ry={9}
-                              />
-                              <text className="measurement-overlay__label" x={centerX} y={centerY - 11}>
-                                {label}
-                              </text>
-                            </>
-                          ) : (
-                            <>
-                              <line
-                                className="measurement-overlay__cap"
-                                x1={guide.start.x - capSize}
-                                y1={guide.start.y}
-                                x2={guide.start.x + capSize}
-                                y2={guide.start.y}
-                              />
-                              <line
-                                className="measurement-overlay__cap"
-                                x1={guide.end.x - capSize}
-                                y1={guide.end.y}
-                                x2={guide.end.x + capSize}
-                                y2={guide.end.y}
-                              />
-                              <rect
-                                className="measurement-overlay__label-box"
-                                x={centerX + 10}
-                                y={centerY - 9}
-                                width={labelWidth}
-                                height={18}
-                                rx={9}
-                                ry={9}
-                              />
-                              <text
-                                className="measurement-overlay__label measurement-overlay__label--start"
-                                x={centerX + 10 + labelWidth / 2}
-                                y={centerY + 4}
-                              >
-                                {label}
-                              </text>
-                            </>
-                          )}
-                        </g>
-                      )
-                    })}
-                  </svg>
-                )}
-              </div>
-
-              <div className="canvas-nav" aria-label="Navegacao do canvas">
-                <button type="button" onClick={setHandMode} aria-label="Mover pelo canvas">
-                  <Move size={16} />
+                <button type="button" className="floating-icon-button" onClick={() => setMenuOpen(false)} aria-label="Close menu">
+                  <X size={16} />
                 </button>
-                <button type="button" onClick={zoomIn} aria-label="Aproximar">
+              </div>
+
+              <div className="main-menu-panel__actions">
+                <button type="button" className="menu-action" onClick={createBoard}>
                   <Plus size={16} />
+                  <span>New board</span>
                 </button>
-                <button type="button" onClick={zoomOut} aria-label="Afastar">
-                  <Minus size={16} />
+                <button type="button" className="menu-action" onClick={renameBoard}>
+                  <Type size={16} />
+                  <span>Rename board</span>
                 </button>
-                <button type="button" onClick={focusCanvas} aria-label="Ajustar ao quadro">
+                <button type="button" className="menu-action menu-action--danger" onClick={clearBoard}>
+                  <Trash2 size={16} />
+                  <span>Clear board</span>
+                </button>
+              </div>
+
+              <div className="board-list">
+                {boards.map((board) => (
+                  <button
+                    key={board.id}
+                    type="button"
+                    className={`board-list__item ${board.id === activeBoardId ? 'board-list__item--active' : ''}`}
+                    onClick={() => openBoard(board.id)}
+                  >
+                    <div>
+                      <strong>{board.name}</strong>
+                      <span>{board.id === activeBoardId ? 'Current board' : 'Open board'}</span>
+                    </div>
+                    <ArrowRight size={16} />
+                  </button>
+                ))}
+              </div>
+            </aside>
+          </>
+        )}
+
+        {assetsOpen && (
+          <>
+            <button
+              type="button"
+              className="overlay-scrim"
+              onClick={() => setAssetsOpen(false)}
+              aria-label="Close assets panel"
+            />
+            <aside className="floating-panel assets-panel">
+              <div className="floating-panel__header">
+                <div>
+                  <span className="panel-kicker">Library</span>
+                  <h2>Board assets</h2>
+                </div>
+                <button type="button" className="floating-icon-button" onClick={() => setAssetsOpen(false)} aria-label="Close assets">
+                  <X size={16} />
+                </button>
+              </div>
+
+              <div className="assets-panel__actions">
+                <button type="button" className="menu-action" onClick={() => void openPastePanel()}>
+                  <Copy size={16} />
+                  <span>Paste content</span>
+                </button>
+                <button
+                  type="button"
+                  className="menu-action"
+                  onClick={() => setMediaInteractionEnabled((enabled) => !enabled)}
+                >
+                  <ArrowUpRight size={16} />
+                  <span>{mediaInteractionEnabled ? 'Lock media' : 'Play media'}</span>
+                </button>
+              </div>
+
+              <div className="asset-list">
+                {assets.length ? (
+                  assets.map((asset) => (
+                    <button key={asset.id} type="button" className="asset-card" onClick={() => focusShape(asset.id)}>
+                      <div className="asset-card__thumb">
+                        {asset.previewUrl ? (
+                          <img src={asset.previewUrl} alt={asset.title} />
+                        ) : asset.type === 'media' ? (
+                          <ArrowUpRight size={18} />
+                        ) : asset.type === 'bookmark' ? (
+                          <Link2 size={18} />
+                        ) : asset.type === 'note' ? (
+                          <StickyNote size={18} />
+                        ) : asset.type === 'text' ? (
+                          <Type size={18} />
+                        ) : (
+                          <Image size={18} />
+                        )}
+                      </div>
+                      <div className="asset-card__copy">
+                        <strong>{asset.title}</strong>
+                        <span>{asset.subtitle}</span>
+                      </div>
+                      <ArrowRight size={14} />
+                    </button>
+                  ))
+                ) : (
+                  <div className="asset-empty">
+                    <strong>No assets yet</strong>
+                    <span>Paste images, links, reels, shorts, or text directly onto the board.</span>
+                  </div>
+                )}
+              </div>
+            </aside>
+          </>
+        )}
+
+        {pasteOpen && (
+          <>
+            <button
+              type="button"
+              className="overlay-scrim"
+              onClick={() => setPasteOpen(false)}
+              aria-label="Close paste panel"
+            />
+            <div className="dialog-shell">
+              <div className="dialog-card">
+                <div className="floating-panel__header">
+                  <div>
+                    <span className="panel-kicker">Paste</span>
+                    <h2>Add content to the board</h2>
+                  </div>
+                  <button type="button" className="floating-icon-button" onClick={() => setPasteOpen(false)} aria-label="Close paste dialog">
+                    <X size={16} />
+                  </button>
+                </div>
+
+                <p className="dialog-card__description">
+                  Paste links, notes, or copied text. Images can be pasted directly with Ctrl+V / Cmd+V.
+                </p>
+
+                <textarea
+                  value={pasteValue}
+                  onChange={(event) => setPasteValue(event.target.value)}
+                  placeholder="Paste links, notes, or a block of text"
+                />
+
+                <div className="dialog-card__actions">
+                  <button type="button" className="secondary-button" onClick={() => void pasteFromClipboard()}>
+                    <Copy size={16} />
+                    <span>Use clipboard</span>
+                  </button>
+                  <button type="button" className="primary-button" onClick={saveManualPaste}>
+                    <ArrowRight size={16} />
+                    <span>Add to board</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+
+        {boardDialog && (
+          <>
+            <button
+              type="button"
+              className="overlay-scrim"
+              onClick={() => setBoardDialog(null)}
+              aria-label="Close board dialog"
+            />
+            <div className="dialog-shell">
+              <div className="dialog-card dialog-card--compact">
+                <div className="floating-panel__header">
+                  <div>
+                    <span className="panel-kicker">Board</span>
+                    <h2>{boardDialog.mode === 'create' ? 'Create a new board' : 'Rename current board'}</h2>
+                  </div>
+                  <button type="button" className="floating-icon-button" onClick={() => setBoardDialog(null)} aria-label="Close board dialog">
+                    <X size={16} />
+                  </button>
+                </div>
+
+                <input
+                  value={boardDraft}
+                  onChange={(event) => setBoardDraft(event.target.value)}
+                  placeholder="Board name"
+                  autoFocus
+                />
+
+                <div className="dialog-card__actions">
+                  <button type="button" className="secondary-button" onClick={() => setBoardDialog(null)}>
+                    <span>Cancel</span>
+                  </button>
+                  <button type="button" className="primary-button" onClick={submitBoardDialog}>
+                    <span>{boardDialog.mode === 'create' ? 'Create board' : 'Save name'}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+
+        <div className="editor-canvas">
+          <Tldraw
+            hideUi
+            persistenceKey="whiteboard-studio-autosave"
+            onMount={setEditor}
+            shapeUtils={shapeUtils}
+            autoFocus
+          />
+        </div>
+
+        {hasSelection && (
+          <aside className="floating-panel properties-panel">
+            <div className="floating-panel__header">
+              <div>
+                <span className="panel-kicker">Properties</span>
+                <h2>
+                  {selectedShapes.length > 1
+                    ? `${selectedShapes.length} items selected`
+                    : primarySelectedShape?.type === INSTAGRAM_REEL_SHAPE_TYPE
+                      ? 'Instagram Reel'
+                      : primarySelectedShape?.type === 'embed'
+                        ? 'Embedded media'
+                        : primarySelectedShape?.type === 'bookmark'
+                          ? 'Bookmark card'
+                          : primarySelectedShape?.type === 'image'
+                            ? 'Image'
+                            : primarySelectedShape?.type === 'note'
+                              ? 'Sticky note'
+                              : primarySelectedShape?.type === 'text'
+                                ? 'Text block'
+                                : 'Selection'}
+                </h2>
+              </div>
+            </div>
+
+            <div className="properties-panel__section">
+              <span>Actions</span>
+              <div className="inline-actions">
+                <button type="button" className="secondary-icon-button" onClick={duplicateSelection} title="Duplicate">
+                  <CopyPlus size={16} />
+                </button>
+                <button type="button" className="secondary-icon-button" onClick={bringSelectionToFront} title="Bring to front">
                   <BringToFront size={16} />
                 </button>
+                <button type="button" className="secondary-icon-button secondary-icon-button--danger" onClick={deleteSelection} title="Delete">
+                  <Trash2 size={16} />
+                </button>
               </div>
             </div>
-          )}
-        </section>
 
-        <nav className="mobile-bottom-nav" aria-label="Mobile navigation">
-          <button type="button" onClick={() => setWorkspaceView('library')}>
-            <LayoutDashboard size={18} />
-            <span>Library</span>
+            {isMediaSelection && (
+              <div className="properties-panel__section">
+                <span>Embedded media</span>
+                <button
+                  type="button"
+                  className="secondary-button secondary-button--full"
+                  onClick={() => setMediaInteractionEnabled((enabled) => !enabled)}
+                >
+                  <ArrowUpRight size={16} />
+                  <span>{mediaInteractionEnabled ? 'Lock embeds for editing' : 'Enable playback and interaction'}</span>
+                </button>
+              </div>
+            )}
+
+            <div className="properties-panel__section">
+              <span>Stroke color</span>
+              <div className="swatch-row">
+                {COLOR_OPTIONS.map((color) => (
+                  <button
+                    key={color}
+                    type="button"
+                    className={`color-swatch color-swatch--${color} ${colorStyle === color ? 'is-active' : ''}`}
+                    onClick={() => applyStyle(DefaultColorStyle, color)}
+                    aria-label={color}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {!isMediaSelection && (
+              <div className="properties-panel__section">
+                <span>Fill</span>
+                <div className="chip-row">
+                  {FILL_OPTIONS.map((fill) => (
+                    <button
+                      key={fill}
+                      type="button"
+                      className={`chip-button ${fillStyle === fill ? 'chip-button--active' : ''}`}
+                      onClick={() => applyStyle(DefaultFillStyle, fill)}
+                    >
+                      {fill}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {!isMediaSelection && (
+              <div className="properties-panel__section">
+                <span>Stroke</span>
+                <div className="chip-row">
+                  {DASH_OPTIONS.map((dash) => (
+                    <button
+                      key={dash}
+                      type="button"
+                      className={`chip-button ${dashStyle === dash ? 'chip-button--active' : ''}`}
+                      onClick={() => applyStyle(DefaultDashStyle, dash)}
+                    >
+                      {dash}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="properties-panel__section">
+              <span>Size</span>
+              <div className="chip-row">
+                {SIZE_OPTIONS.map((size) => (
+                  <button
+                    key={size}
+                    type="button"
+                    className={`chip-button ${sizeStyle === size ? 'chip-button--active' : ''}`}
+                    onClick={() => applyStyle(DefaultSizeStyle, size)}
+                  >
+                    {size.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {hasTextSelection && (
+              <div className="properties-panel__section">
+                <span>Font</span>
+                <div className="chip-row">
+                  {FONT_OPTIONS.map((font) => (
+                    <button
+                      key={font}
+                      type="button"
+                      className={`chip-button ${fontStyle === font ? 'chip-button--active' : ''}`}
+                      onClick={() => applyStyle(DefaultFontStyle, font)}
+                    >
+                      {font}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </aside>
+        )}
+
+        <div className="zoom-controls" aria-label="Zoom controls">
+          <button type="button" className="floating-icon-button" onClick={zoomOut} aria-label="Zoom out">
+            <Minus size={16} />
           </button>
-          <button type="button" onClick={() => setWorkspaceView('edit')}>
-            <PenTool size={18} />
-            <span>Edit</span>
+          <button type="button" className="zoom-controls__level" onClick={zoomToFit} title="Zoom to fit">
+            {Math.round(zoomLevel * 100)}%
           </button>
-          <button
-            type="button"
-            onClick={() => {
-              setManualPasteOpen(false)
-              setCreateMenuOpen(true)
-            }}
-          >
-            <Plus size={18} />
-            <span>New</span>
+          <button type="button" className="floating-icon-button" onClick={zoomIn} aria-label="Zoom in">
+            <Plus size={16} />
           </button>
-          <button type="button" onClick={() => void openManualPastePanel()}>
-            <Copy size={18} />
-            <span>Paste</span>
-          </button>
-        </nav>
-      </main>
+        </div>
+
+        <div className="mobile-toolbar" role="toolbar" aria-label="Mobile tools">
+          {TOOLBAR_TOOLS.map((tool) => (
+            <ToolButton
+              key={tool.id}
+              compact
+              active={activeTool === tool.id}
+              icon={tool.icon}
+              label={tool.label}
+              onClick={() => activateTool(tool.id)}
+            />
+          ))}
+        </div>
+
+        {statusMessage && <div className="status-toast">{statusMessage}</div>}
+      </div>
     </div>
   )
 }
 
 export default App
-
