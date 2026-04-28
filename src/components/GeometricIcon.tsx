@@ -42,6 +42,15 @@ export type GeometricIconName =
   | 'distribute'
   | 'link'
   | 'minus'
+  | 'settings'
+  | 'lock'
+  | 'group'
+  | 'align-left'
+  | 'align-center'
+  | 'align-right'
+  | 'stroke-solid'
+  | 'stroke-dashed'
+  | 'stroke-dotted'
 
 type GeometricIconProps = {
   name: GeometricIconName
@@ -331,6 +340,71 @@ function renderGlyph(name: GeometricIconName) {
       )
     case 'minus':
       return <path d="M6 12h12" />
+    case 'settings':
+      return (
+        <>
+          <circle cx="12" cy="12" r="2.4" />
+          <path d="M12 4.8v1.8" />
+          <path d="M12 17.4v1.8" />
+          <path d="m6.9 6.9 1.3 1.3" />
+          <path d="m15.8 15.8 1.3 1.3" />
+          <path d="M4.8 12h1.8" />
+          <path d="M17.4 12h1.8" />
+          <path d="m6.9 17.1 1.3-1.3" />
+          <path d="m15.8 8.2 1.3-1.3" />
+        </>
+      )
+    case 'lock':
+      return (
+        <>
+          <rect x="6.8" y="10.2" width="10.4" height="8.2" rx="1.6" />
+          <path d="M8.8 10.2V8.8a3.2 3.2 0 0 1 6.4 0v1.4" />
+        </>
+      )
+    case 'group':
+      return (
+        <>
+          <rect x="5.8" y="8.2" width="6.4" height="6.4" rx="1.2" />
+          <rect x="11.8" y="9.8" width="6.4" height="6.4" rx="1.2" />
+        </>
+      )
+    case 'align-left':
+      return (
+        <>
+          <path d="M6.5 6.2v11.6" />
+          <rect x="8.8" y="7.4" width="6.4" height="2.4" rx="0.8" />
+          <rect x="8.8" y="14.2" width="8.2" height="2.4" rx="0.8" />
+        </>
+      )
+    case 'align-center':
+      return (
+        <>
+          <path d="M12 6.2v11.6" />
+          <rect x="8.3" y="7.4" width="7.4" height="2.4" rx="0.8" />
+          <rect x="6.9" y="14.2" width="10.2" height="2.4" rx="0.8" />
+        </>
+      )
+    case 'align-right':
+      return (
+        <>
+          <path d="M17.5 6.2v11.6" />
+          <rect x="8.8" y="7.4" width="6.4" height="2.4" rx="0.8" />
+          <rect x="7" y="14.2" width="8.2" height="2.4" rx="0.8" />
+        </>
+      )
+    case 'stroke-solid':
+      return <path d="M6 12h12" />
+    case 'stroke-dashed':
+      return <path d="M6 12h3m2 0h2m2 0h3" />
+    case 'stroke-dotted':
+      return (
+        <>
+          <circle cx="7" cy="12" r="0.8" fill="currentColor" stroke="none" />
+          <circle cx="11" cy="12" r="0.8" fill="currentColor" stroke="none" />
+          <circle cx="15" cy="12" r="0.8" fill="currentColor" stroke="none" />
+          <circle cx="18" cy="12" r="0.8" fill="currentColor" stroke="none" />
+        </>
+      )
     default:
       return null
   }

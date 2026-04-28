@@ -4,7 +4,6 @@ import {
   createShapeId,
   DefaultColorStyle,
   DefaultDashStyle,
-  DefaultFillStyle,
   DefaultFontStyle,
   DefaultSizeStyle,
   GeoShapeGeoStyle,
@@ -41,10 +40,13 @@ type AssetSummary = {
 type CanvasRect = { x: number; y: number; w: number; h: number }
 
 const COLOR_OPTIONS = ['black', 'blue', 'green', 'yellow', 'red'] as const
-const FILL_OPTIONS = ['none', 'semi', 'solid'] as const
 const SIZE_OPTIONS = ['s', 'm', 'l', 'xl'] as const
-const DASH_OPTIONS = ['draw', 'solid', 'dashed', 'dotted'] as const
 const FONT_OPTIONS = ['draw', 'sans', 'serif', 'mono'] as const
+const DASH_BUTTONS: Array<{ value: 'solid' | 'dashed' | 'dotted'; icon: GeometricIconName; label: string }> = [
+  { value: 'solid', icon: 'stroke-solid', label: 'Traco continuo' },
+  { value: 'dashed', icon: 'stroke-dashed', label: 'Traco tracejado' },
+  { value: 'dotted', icon: 'stroke-dotted', label: 'Traco pontilhado' },
+]
 
 const TOOLBAR_TOOLS: Array<{
   id: ToolbarTool
@@ -983,9 +985,8 @@ function App() {
   const hasTextSelection = selectedShapes.some((shape) => shape.type === 'text' || shape.type === 'note')
 
   const colorStyle = getKnownStyle(editor, DefaultColorStyle, 'black')
-  const fillStyle = getKnownStyle(editor, DefaultFillStyle, 'none')
   const sizeStyle = getKnownStyle(editor, DefaultSizeStyle, 'm')
-  const dashStyle = getKnownStyle(editor, DefaultDashStyle, 'draw')
+  const dashStyle = getKnownStyle(editor, DefaultDashStyle, 'solid')
   const fontStyle = getKnownStyle(editor, DefaultFontStyle, 'sans')
 
   useEffect(() => {
@@ -1003,6 +1004,17 @@ function App() {
       editor.setStyleForNextShapes(style as never, value as never)
     },
     [editor, selectedShapeIds.length]
+  )
+
+  const sizeIndex = Math.max(0, SIZE_OPTIONS.indexOf(sizeStyle as (typeof SIZE_OPTIONS)[number]))
+
+  const changeSizeStyle = useCallback(
+    (direction: -1 | 1) => {
+      const currentIndex = Math.max(0, SIZE_OPTIONS.indexOf(sizeStyle as (typeof SIZE_OPTIONS)[number]))
+      const nextIndex = clamp(currentIndex + direction, 0, SIZE_OPTIONS.length - 1)
+      applyStyle(DefaultSizeStyle, SIZE_OPTIONS[nextIndex])
+    },
+    [applyStyle, sizeStyle]
   )
 
   const boardName = boards.find((board) => board.id === activeBoardId)?.name ?? 'Board'
@@ -1152,7 +1164,7 @@ function App() {
           <section className="workspace-sidebar__section workspace-sidebar__section--boards">
             <div className="workspace-sidebar__section-header">
               <span className="panel-kicker">PASTAS</span>
-              <button type="button" className="sidebar-mini-action" onClick={createBoard} aria-label="Create board">
+              <button type="button" className="sidebar-mini-action" onClick={createBoard} aria-label="Criar pasta">
                 <GeometricIcon name="plus" size={15} />
               </button>
             </div>
@@ -1571,16 +1583,19 @@ function App() {
             )}
 
             <div className="properties-panel__section">
-              <span>Ações</span>
+              <span>Visão</span>
               <div className="inline-actions">
-                <button type="button" className="secondary-icon-button" onClick={duplicateSelection} title="Duplicate" disabled={!hasSelection}>
-                  <GeometricIcon name="duplicate" size={16} />
+                <button type="button" className="secondary-icon-button" onClick={() => activateTool('hand')} title="Mover canvas">
+                  <GeometricIcon name="hand" size={16} />
                 </button>
-                <button type="button" className="secondary-icon-button" onClick={bringSelectionToFront} title="Bring to front" disabled={!hasSelection}>
-                  <GeometricIcon name="front" size={16} />
+                <button type="button" className="secondary-icon-button" onClick={() => setStatusMessage('Os layouts rápidos entram no próximo passo.')} title="Layouts rápidos">
+                  <GeometricIcon name="layout" size={16} />
                 </button>
-                <button type="button" className="secondary-icon-button secondary-icon-button--danger" onClick={deleteSelection} title="Delete" disabled={!hasSelection}>
-                  <GeometricIcon name="trash" size={16} />
+                <button type="button" className="secondary-icon-button" onClick={() => setStatusMessage('Os controles de distribuição entram no próximo passo.')} title="Distribuição">
+                  <GeometricIcon name="distribute" size={16} />
+                </button>
+                <button type="button" className="secondary-icon-button" onClick={() => setAssetsOpen(true)} title="Biblioteca">
+                  <GeometricIcon name="templates" size={16} />
                 </button>
               </div>
             </div>
@@ -1617,33 +1632,17 @@ function App() {
             {!isMediaSelection && (
               <div className="properties-panel__section">
                 <span>Traço</span>
-                <div className="chip-row">
-                  {FILL_OPTIONS.map((fill) => (
+                <div className="stroke-chip-row">
+                  {DASH_BUTTONS.map((dash) => (
                     <button
-                      key={fill}
+                      key={dash.value}
                       type="button"
-                      className={`chip-button ${fillStyle === fill ? 'chip-button--active' : ''}`}
-                      onClick={() => applyStyle(DefaultFillStyle, fill)}
+                      className={`stroke-chip ${dashStyle === dash.value ? 'stroke-chip--active' : ''}`}
+                      onClick={() => applyStyle(DefaultDashStyle, dash.value)}
+                      aria-label={dash.label}
+                      title={dash.label}
                     >
-                      {fill}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {!isMediaSelection && (
-              <div className="properties-panel__section">
-                <span>Linha</span>
-                <div className="chip-row">
-                  {DASH_OPTIONS.map((dash) => (
-                    <button
-                      key={dash}
-                      type="button"
-                      className={`chip-button ${dashStyle === dash ? 'chip-button--active' : ''}`}
-                      onClick={() => applyStyle(DefaultDashStyle, dash)}
-                    >
-                      {dash}
+                      <GeometricIcon name={dash.icon} size={18} />
                     </button>
                   ))}
                 </div>
@@ -1652,17 +1651,27 @@ function App() {
 
             <div className="properties-panel__section">
               <span>Espessura</span>
-              <div className="chip-row">
-                {SIZE_OPTIONS.map((size) => (
-                  <button
-                    key={size}
-                    type="button"
-                    className={`chip-button ${sizeStyle === size ? 'chip-button--active' : ''}`}
-                    onClick={() => applyStyle(DefaultSizeStyle, size)}
-                  >
-                    {size.toUpperCase()}
-                  </button>
-                ))}
+              <div className="stepper-row">
+                <button type="button" className="secondary-icon-button" onClick={() => changeSizeStyle(-1)} aria-label="Reduzir espessura">
+                  <GeometricIcon name="minus" size={16} />
+                </button>
+                <div className="stepper-value">
+                  <strong>{sizeIndex + 1}</strong>
+                  <span>px</span>
+                </div>
+                <button type="button" className="secondary-icon-button" onClick={() => changeSizeStyle(1)} aria-label="Aumentar espessura">
+                  <GeometricIcon name="plus" size={16} />
+                </button>
+              </div>
+            </div>
+
+            <div className="properties-panel__section">
+              <span>Opacidade</span>
+              <div className="opacity-row">
+                <strong>100%</strong>
+                <div className="opacity-rail" aria-hidden="true">
+                  <span />
+                </div>
               </div>
             </div>
 
@@ -1687,9 +1696,14 @@ function App() {
             <div className="properties-panel__section">
               <span>Camadas</span>
               <div className="inline-actions">
-                <button type="button" className="secondary-button secondary-button--full" onClick={bringSelectionToFront} disabled={!hasSelection}>
-                  <GeometricIcon name="layers" size={16} />
-                  <span>Trazer para frente</span>
+                <button type="button" className="secondary-icon-button" onClick={bringSelectionToFront} title="Trazer para frente" disabled={!hasSelection}>
+                  <GeometricIcon name="front" size={16} />
+                </button>
+                <button type="button" className="secondary-icon-button" onClick={duplicateSelection} title="Duplicar" disabled={!hasSelection}>
+                  <GeometricIcon name="duplicate" size={16} />
+                </button>
+                <button type="button" className="secondary-icon-button secondary-icon-button--danger" onClick={deleteSelection} title="Excluir" disabled={!hasSelection}>
+                  <GeometricIcon name="trash" size={16} />
                 </button>
               </div>
             </div>
@@ -1697,13 +1711,36 @@ function App() {
             <div className="properties-panel__section">
               <span>Alinhamento</span>
               <div className="inline-actions">
+                <button type="button" className="secondary-icon-button" onClick={() => setStatusMessage('O alinhamento à esquerda entra no próximo passo.')} title="Alinhar à esquerda">
+                  <GeometricIcon name="align-left" size={16} />
+                </button>
+                <button type="button" className="secondary-icon-button" onClick={() => setStatusMessage('O alinhamento central entra no próximo passo.')} title="Centralizar">
+                  <GeometricIcon name="align-center" size={16} />
+                </button>
+                <button type="button" className="secondary-icon-button" onClick={() => setStatusMessage('O alinhamento à direita entra no próximo passo.')} title="Alinhar à direita">
+                  <GeometricIcon name="align-right" size={16} />
+                </button>
+              </div>
+            </div>
+
+            <div className="properties-panel__section">
+              <span>Ações</span>
+              <div className="inline-actions inline-actions--stack">
                 <button
                   type="button"
                   className="secondary-button secondary-button--full"
-                  onClick={() => setStatusMessage('As guias de alinhamento entram no próximo passo.')}
+                  onClick={() => setStatusMessage('O bloqueio inteligente entra no próximo passo.')}
                 >
-                  <GeometricIcon name="distribute" size={16} />
-                  <span>Guias centrais</span>
+                  <GeometricIcon name="lock" size={16} />
+                  <span>Bloquear</span>
+                </button>
+                <button
+                  type="button"
+                  className="secondary-button secondary-button--full"
+                  onClick={() => setStatusMessage('O agrupamento visual entra no próximo passo.')}
+                >
+                  <GeometricIcon name="group" size={16} />
+                  <span>Agrupar</span>
                 </button>
               </div>
             </div>
@@ -1906,7 +1943,7 @@ function App() {
               setMobileToolsOpen(false)
             }}
           >
-            <GeometricIcon name="layout" size={16} />
+            <GeometricIcon name="settings" size={16} />
             <span>Ajustes</span>
           </button>
         </div>
