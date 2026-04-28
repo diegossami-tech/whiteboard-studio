@@ -1,18 +1,23 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
+  AlignHorizontalJustifyCenter,
   ArrowRight,
   ArrowUpRight,
   BookOpen,
   BringToFront,
+  ChevronDown,
   Circle,
   Compass,
   Copy,
   CopyPlus,
+  FileText,
   Eraser,
+  FolderKanban,
   Hand,
   Image,
   Layers3,
   Link2,
+  LayoutTemplate,
   Menu,
   Minus,
   MousePointer2,
@@ -23,6 +28,7 @@ import {
   Share2,
   Square,
   Sparkles,
+  Cloud,
   StickyNote,
   Trash2,
   Type,
@@ -59,6 +65,7 @@ type MediaPasteItem =
 type BoardEntry = Pick<TLPage, 'id' | 'name'>
 type ToolbarTool = 'select' | 'hand' | 'rectangle' | 'ellipse' | 'line' | 'arrow' | 'text' | 'draw' | 'eraser'
 type BoardDialogState = { mode: 'create' | 'rename' } | null
+type SidebarSection = 'projects' | 'library' | 'templates' | 'files'
 type AssetSummary = {
   id: TLShapeId
   type: 'image' | 'media' | 'bookmark' | 'text' | 'note'
@@ -506,6 +513,21 @@ function ToolButton({
   )
 }
 
+function GeometricMotifIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+      <path
+        d="M12 2.4l2.2 3.5 4-.1-1.8 3.6 3.2 2.4-3.2 2.4 1.8 3.6-4-.1-2.2 3.5-2.2-3.5-4 .1 1.8-3.6L2.6 12l3.2-2.4-1.8-3.6 4 .1L12 2.4z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinejoin="round"
+      />
+      <circle cx="12" cy="12" r="2.2" fill="currentColor" />
+    </svg>
+  )
+}
+
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value))
 }
@@ -523,10 +545,14 @@ function App() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [assetsOpen, setAssetsOpen] = useState(false)
   const [pasteOpen, setPasteOpen] = useState(false)
+  const [activeSidebarSection, setActiveSidebarSection] = useState<SidebarSection>('projects')
   const [pasteValue, setPasteValue] = useState('')
   const [boardDialog, setBoardDialog] = useState<BoardDialogState>(null)
   const [boardDraft, setBoardDraft] = useState('')
   const [mediaInteractionEnabled, setMediaInteractionEnabled] = useState(false)
+  const [accentToolActive, setAccentToolActive] = useState(false)
+  const [mobileToolsOpen, setMobileToolsOpen] = useState(false)
+  const [mobilePropertiesOpen, setMobilePropertiesOpen] = useState(false)
   const [mobileMinimapOpen, setMobileMinimapOpen] = useState(false)
   const [statusMessage, setStatusMessage] = useState('Paste images, links, or text straight onto the board.')
   const recentPastedUrlsRef = useRef<Set<string>>(new Set())
@@ -586,6 +612,8 @@ function App() {
         setAssetsOpen(false)
         setPasteOpen(false)
         setBoardDialog(null)
+        setMobileToolsOpen(false)
+        setMobilePropertiesOpen(false)
         setMobileMinimapOpen(false)
       }
     }
@@ -718,6 +746,8 @@ function App() {
   const openPastePanel = useCallback(() => {
     setMenuOpen(false)
     setAssetsOpen(false)
+    setMobileToolsOpen(false)
+    setMobilePropertiesOpen(false)
     setMobileMinimapOpen(false)
     setPasteOpen(true)
     void hydratePasteFromClipboard()
@@ -735,6 +765,7 @@ function App() {
       if (insertPlainText(text)) {
         setPasteOpen(false)
         setPasteValue('')
+        setMobileToolsOpen(false)
       }
     } catch {
       setStatusMessage('Clipboard was blocked. Paste manually in the panel.')
@@ -746,6 +777,7 @@ function App() {
     if (insertPlainText(pasteValue)) {
       setPasteOpen(false)
       setPasteValue('')
+      setMobileToolsOpen(false)
     }
   }, [insertPlainText, pasteValue])
 
@@ -763,6 +795,8 @@ function App() {
       })
 
       setActiveTool(tool)
+      setAccentToolActive(false)
+      setMobileToolsOpen(false)
     },
     [editor]
   )
@@ -784,6 +818,7 @@ function App() {
     setBoardDraft(`Board ${nextIndex}`)
     setBoardDialog({ mode: 'create' })
     setMenuOpen(false)
+    setActiveSidebarSection('projects')
     setMobileMinimapOpen(false)
   }, [boards.length])
 
@@ -794,6 +829,7 @@ function App() {
     setBoardDraft(page.name)
     setBoardDialog({ mode: 'rename' })
     setMenuOpen(false)
+    setActiveSidebarSection('projects')
     setMobileMinimapOpen(false)
   }, [activeBoardId, editor])
 
@@ -826,6 +862,7 @@ function App() {
       editor.setCurrentPage(pageId)
       setMenuOpen(false)
       setAssetsOpen(false)
+      setActiveSidebarSection('projects')
       setMobileMinimapOpen(false)
       setStatusMessage('Board switched.')
     },
@@ -891,6 +928,51 @@ function App() {
     }
   }, [])
 
+  const pingSync = useCallback(() => {
+    setStatusMessage('All changes synced to this device.')
+  }, [])
+
+  const activateGeometricMode = useCallback(() => {
+    if (!editor) return
+    editor.setCurrentTool('draw')
+    setActiveTool('draw')
+    setAccentToolActive(true)
+    setMobileToolsOpen(false)
+    setStatusMessage('Geometric sketch mode ready.')
+  }, [editor])
+
+  const openSidebarSection = useCallback(
+    (section: SidebarSection) => {
+      setActiveSidebarSection(section)
+      setMobileToolsOpen(false)
+      setMobilePropertiesOpen(false)
+
+      if (section === 'projects') {
+        setMenuOpen(true)
+        setAssetsOpen(false)
+        setPasteOpen(false)
+        return
+      }
+
+      if (section === 'library') {
+        setAssetsOpen(true)
+        setMenuOpen(false)
+        setPasteOpen(false)
+        return
+      }
+
+      if (section === 'files') {
+        openPastePanel()
+        return
+      }
+
+      setMenuOpen(false)
+      setAssetsOpen(false)
+      setStatusMessage('Template library coming next.')
+    },
+    [openPastePanel]
+  )
+
   const selectedShapes = useMemo(() => {
     if (!editor) return []
     return selectedShapeIds
@@ -910,6 +992,12 @@ function App() {
   const sizeStyle = getKnownStyle(editor, DefaultSizeStyle, 'm')
   const dashStyle = getKnownStyle(editor, DefaultDashStyle, 'draw')
   const fontStyle = getKnownStyle(editor, DefaultFontStyle, 'sans')
+
+  useEffect(() => {
+    if (!hasSelection) {
+      setMobilePropertiesOpen(false)
+    }
+  }, [hasSelection])
 
   const applyStyle = useCallback(
     (style: unknown, value: string) => {
@@ -997,46 +1085,63 @@ function App() {
             </div>
             <div className="workspace-brand__copy">
               <span className="workspace-brand__eyebrow">Whiteboard Studio</span>
-              <strong>Geometry Workspace</strong>
+              <strong>Ornate Workspace</strong>
             </div>
           </div>
 
           <div className="workspace-search">
             <Search size={16} />
-            <span>Search boards and assets</span>
+            <span>Search boards, files, and assets</span>
           </div>
 
           <section className="workspace-sidebar__section">
             <div className="workspace-sidebar__section-header">
-              <span className="panel-kicker">Workspace</span>
+              <span className="panel-kicker">Navigation</span>
               <button type="button" className="sidebar-mini-action" onClick={createBoard} aria-label="Create board">
                 <Plus size={15} />
               </button>
             </div>
-            <div className="workspace-sidebar__summary">
-              <div>
-                <strong>{boardCountLabel}</strong>
-                <span>Layered, persistent boards</span>
-              </div>
-              <div>
-                <strong>{assetCountLabel}</strong>
-                <span>Images, embeds, and notes</span>
-              </div>
+            <div className="sidebar-nav-list">
+              <button
+                type="button"
+                className={`sidebar-nav-item ${activeSidebarSection === 'projects' ? 'sidebar-nav-item--active' : ''}`}
+                onClick={() => openSidebarSection('projects')}
+              >
+                <FolderKanban size={16} />
+                <span>Projects</span>
+              </button>
+              <button
+                type="button"
+                className={`sidebar-nav-item ${activeSidebarSection === 'library' ? 'sidebar-nav-item--active' : ''}`}
+                onClick={() => openSidebarSection('library')}
+              >
+                <BookOpen size={16} />
+                <span>Library</span>
+              </button>
+              <button
+                type="button"
+                className={`sidebar-nav-item ${activeSidebarSection === 'templates' ? 'sidebar-nav-item--active' : ''}`}
+                onClick={() => openSidebarSection('templates')}
+              >
+                <LayoutTemplate size={16} />
+                <span>Templates</span>
+              </button>
+              <button
+                type="button"
+                className={`sidebar-nav-item ${activeSidebarSection === 'files' ? 'sidebar-nav-item--active' : ''}`}
+                onClick={() => openSidebarSection('files')}
+              >
+                <FileText size={16} />
+                <span>Files</span>
+              </button>
             </div>
           </section>
 
           <section className="workspace-sidebar__section">
             <div className="workspace-sidebar__section-header">
-              <span className="panel-kicker">Boards</span>
-              <button
-                type="button"
-                className="sidebar-link-button"
-                onClick={() => {
-                  setMenuOpen(true)
-                  setAssetsOpen(false)
-                }}
-              >
-                Open menu
+              <span className="panel-kicker">Projects</span>
+              <button type="button" className="sidebar-link-button" onClick={renameBoard}>
+                Rename
               </button>
             </div>
             <div className="sidebar-board-list">
@@ -1062,14 +1167,11 @@ function App() {
 
           <section className="workspace-sidebar__section workspace-sidebar__section--library">
             <div className="workspace-sidebar__section-header">
-              <span className="panel-kicker">Library</span>
+              <span className="panel-kicker">Library preview</span>
               <button
                 type="button"
                 className="sidebar-link-button"
-                onClick={() => {
-                  setAssetsOpen(true)
-                  setMenuOpen(false)
-                }}
+                onClick={() => openSidebarSection('library')}
               >
                 View all
               </button>
@@ -1110,22 +1212,60 @@ function App() {
               </div>
             )}
           </section>
+
+          <div className="workspace-sidebar__meta">
+            <div>
+              <strong>{boardCountLabel}</strong>
+              <span>Persistent whiteboards</span>
+            </div>
+            <div>
+              <strong>{assetCountLabel}</strong>
+              <span>Visual references collected</span>
+            </div>
+          </div>
+
+          <div className="upgrade-card">
+            <div className="upgrade-card__icon" aria-hidden="true">
+              <GeometricMotifIcon />
+            </div>
+            <div className="upgrade-card__copy">
+              <strong>Upgrade to Atelier</strong>
+              <span>Unlock shared libraries, geometric templates, and richer exports.</span>
+            </div>
+            <button type="button" className="upgrade-card__button" onClick={() => setStatusMessage('Upgrade flow coming next.')}>
+              Upgrade
+            </button>
+          </div>
         </aside>
 
         <header className="app-topbar">
           <div className="app-topbar__left">
             <button
               type="button"
-              className="floating-icon-button"
+              className="floating-icon-button app-menu-toggle"
               onClick={() => {
                 setMenuOpen((open) => !open)
                 setAssetsOpen(false)
+                setActiveSidebarSection('projects')
+                setMobileToolsOpen(false)
                 setMobileMinimapOpen(false)
               }}
               aria-label="Open main menu"
               title="Main menu"
             >
               <Menu size={18} />
+            </button>
+            <button
+              type="button"
+              className="board-selector"
+              onClick={() => openSidebarSection('projects')}
+              aria-label="Current project selector"
+            >
+              <div className="board-selector__copy">
+                <span className="panel-kicker">Current project</span>
+                <strong>{boardName}</strong>
+              </div>
+              <ChevronDown size={16} />
             </button>
             <div className="history-cluster">
               <button
@@ -1152,24 +1292,13 @@ function App() {
           </div>
 
           <div className="app-topbar__center">
-            <div className="floating-toolbar" role="toolbar" aria-label="Drawing tools">
-              {TOOLBAR_TOOLS.map((tool) => (
-                <ToolButton
-                  key={tool.id}
-                  active={activeTool === tool.id}
-                  icon={tool.icon}
-                  label={tool.label}
-                  onClick={() => activateTool(tool.id)}
-                />
-              ))}
+            <div className="topbar-status">
+              <Cloud size={16} />
+              <span>Synced</span>
             </div>
           </div>
 
           <div className="app-topbar__right">
-            <div className="board-badge board-badge--board">
-              <Layers3 size={16} />
-              <span>{boardName}</span>
-            </div>
             <button
               type="button"
               className="floating-icon-button floating-icon-button--label"
@@ -1186,6 +1315,8 @@ function App() {
               onClick={() => {
                 setAssetsOpen((open) => !open)
                 setMenuOpen(false)
+                setActiveSidebarSection('library')
+                setMobileToolsOpen(false)
                 setMobileMinimapOpen(false)
               }}
               aria-label="Open assets"
@@ -1193,6 +1324,15 @@ function App() {
             >
               <BookOpen size={18} />
               <span>Assets</span>
+            </button>
+            <button
+              type="button"
+              className="floating-icon-button"
+              onClick={pingSync}
+              aria-label="Cloud sync status"
+              title="Cloud sync"
+            >
+              <Cloud size={18} />
             </button>
             <button
               type="button"
@@ -1438,7 +1578,7 @@ function App() {
         </div>
 
         {hasSelection && !assetsOpen && !menuOpen && !pasteOpen && !boardDialog && (
-          <aside className="floating-panel properties-panel">
+          <aside className={`floating-panel properties-panel ${mobilePropertiesOpen ? 'properties-panel--mobile-open' : ''}`}>
             <div className="floating-panel__header">
               <div>
                 <span className="panel-kicker">Properties</span>
@@ -1492,7 +1632,7 @@ function App() {
             )}
 
             <div className="properties-panel__section">
-              <span>Stroke color</span>
+              <span>Colors</span>
               <div className="swatch-row">
                 {COLOR_OPTIONS.map((color) => (
                   <button
@@ -1508,7 +1648,7 @@ function App() {
 
             {!isMediaSelection && (
               <div className="properties-panel__section">
-                <span>Fill</span>
+                <span>Stroke</span>
                 <div className="chip-row">
                   {FILL_OPTIONS.map((fill) => (
                     <button
@@ -1526,7 +1666,7 @@ function App() {
 
             {!isMediaSelection && (
               <div className="properties-panel__section">
-                <span>Stroke</span>
+                <span>Line style</span>
                 <div className="chip-row">
                   {DASH_OPTIONS.map((dash) => (
                     <button
@@ -1543,7 +1683,7 @@ function App() {
             )}
 
             <div className="properties-panel__section">
-              <span>Size</span>
+              <span>Thickness</span>
               <div className="chip-row">
                 {SIZE_OPTIONS.map((size) => (
                   <button
@@ -1575,8 +1715,54 @@ function App() {
                 </div>
               </div>
             )}
+
+            <div className="properties-panel__section">
+              <span>Layers</span>
+              <div className="inline-actions">
+                <button type="button" className="secondary-button secondary-button--full" onClick={bringSelectionToFront}>
+                  <Layers3 size={16} />
+                  <span>Bring forward</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="properties-panel__section">
+              <span>Alignment</span>
+              <div className="inline-actions">
+                <button
+                  type="button"
+                  className="secondary-button secondary-button--full"
+                  onClick={() => setStatusMessage('Alignment helpers are coming next.')}
+                >
+                  <AlignHorizontalJustifyCenter size={16} />
+                  <span>Center guides</span>
+                </button>
+              </div>
+            </div>
           </aside>
         )}
+
+        <div className="floating-toolbar floating-toolbar--dock" role="toolbar" aria-label="Drawing tools">
+          {TOOLBAR_TOOLS.map((tool) => (
+            <ToolButton
+              key={tool.id}
+              active={activeTool === tool.id}
+              icon={tool.icon}
+              label={tool.label}
+              onClick={() => activateTool(tool.id)}
+            />
+          ))}
+          <button
+            type="button"
+            className={`tool-button tool-button--accent ${accentToolActive ? 'tool-button--active tool-button--accent-active' : ''}`}
+            onClick={activateGeometricMode}
+            aria-label="Geometric tool"
+            title="Geometric tool"
+          >
+            <GeometricMotifIcon />
+            <span>Motif</span>
+          </button>
+        </div>
 
         <div className="zoom-controls" aria-label="Zoom controls">
           <button type="button" className="floating-icon-button" onClick={zoomOut} aria-label="Zoom out">
@@ -1642,17 +1828,89 @@ function App() {
           </aside>
         )}
 
-        <div className="mobile-toolbar" role="toolbar" aria-label="Mobile tools">
-          {TOOLBAR_TOOLS.map((tool) => (
-            <ToolButton
-              key={tool.id}
-              compact
-              active={activeTool === tool.id}
-              icon={tool.icon}
-              label={tool.label}
-              onClick={() => activateTool(tool.id)}
+        {mobileToolsOpen && (
+          <>
+            <button
+              type="button"
+              className="overlay-scrim overlay-scrim--mobile"
+              onClick={() => setMobileToolsOpen(false)}
+              aria-label="Close tools"
             />
-          ))}
+            <div className="mobile-tools-sheet">
+              <div className="mobile-tools-sheet__header">
+                <div>
+                  <span className="panel-kicker">Tools</span>
+                  <strong>Choose your next move</strong>
+                </div>
+                <button type="button" className="sidebar-mini-action" onClick={() => setMobileToolsOpen(false)} aria-label="Close tools">
+                  <X size={14} />
+                </button>
+              </div>
+              <div className="mobile-toolbar" role="toolbar" aria-label="Mobile tools">
+                {TOOLBAR_TOOLS.map((tool) => (
+                  <ToolButton
+                    key={tool.id}
+                    compact
+                    active={activeTool === tool.id}
+                    icon={tool.icon}
+                    label={tool.label}
+                    onClick={() => activateTool(tool.id)}
+                  />
+                ))}
+                <button
+                  type="button"
+                  className={`tool-button tool-button--compact tool-button--accent ${accentToolActive ? 'tool-button--active tool-button--accent-active' : ''}`}
+                  onClick={activateGeometricMode}
+                  aria-label="Geometric tool"
+                >
+                  <GeometricMotifIcon />
+                  <span>Motif</span>
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+
+        <div className="mobile-bottom-nav" aria-label="Mobile navigation">
+          <button type="button" className="mobile-bottom-nav__item" onClick={() => openSidebarSection('projects')}>
+            <FolderKanban size={16} />
+            <span>Boards</span>
+          </button>
+          <button type="button" className="mobile-bottom-nav__item" onClick={() => openSidebarSection('library')}>
+            <BookOpen size={16} />
+            <span>Library</span>
+          </button>
+          <button
+            type="button"
+            className="mobile-bottom-nav__item mobile-bottom-nav__item--primary"
+            onClick={() => {
+              setMobileToolsOpen((open) => !open)
+              setMobilePropertiesOpen(false)
+              setMobileMinimapOpen(false)
+            }}
+          >
+            <Plus size={18} />
+            <span>Tools</span>
+          </button>
+          <button type="button" className="mobile-bottom-nav__item" onClick={openPastePanel}>
+            <Copy size={16} />
+            <span>Paste</span>
+          </button>
+          <button
+            type="button"
+            className={`mobile-bottom-nav__item ${mobilePropertiesOpen ? 'mobile-bottom-nav__item--active' : ''}`}
+            onClick={() => {
+              if (!hasSelection) {
+                setStatusMessage('Select an item to edit its properties.')
+                return
+              }
+              setMobilePropertiesOpen((open) => !open)
+              setMobileToolsOpen(false)
+            }}
+          >
+            <Layers3 size={16} />
+            <span>Adjust</span>
+          </button>
         </div>
 
         {statusMessage && <div className="status-toast">{statusMessage}</div>}
