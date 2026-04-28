@@ -5,11 +5,13 @@ import {
   BookOpen,
   BringToFront,
   Circle,
+  Compass,
   Copy,
   CopyPlus,
   Eraser,
   Hand,
   Image,
+  Layers3,
   Link2,
   Menu,
   Minus,
@@ -17,11 +19,15 @@ import {
   PencilLine,
   Plus,
   Redo2,
+  Search,
+  Share2,
   Square,
+  Sparkles,
   StickyNote,
   Trash2,
   Type,
   Undo2,
+  UserCircle2,
   X,
 } from 'lucide-react'
 import {
@@ -60,6 +66,8 @@ type AssetSummary = {
   subtitle: string
   previewUrl?: string
 }
+
+type CanvasRect = { x: number; y: number; w: number; h: number }
 
 const COLOR_OPTIONS = ['black', 'blue', 'green', 'yellow', 'red'] as const
 const FILL_OPTIONS = ['none', 'semi', 'solid'] as const
@@ -498,6 +506,10 @@ function ToolButton({
   )
 }
 
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value))
+}
+
 function App() {
   const [editor, setEditor] = useState<Editor | null>(null)
   const [boards, setBoards] = useState<BoardEntry[]>([])
@@ -515,6 +527,7 @@ function App() {
   const [boardDialog, setBoardDialog] = useState<BoardDialogState>(null)
   const [boardDraft, setBoardDraft] = useState('')
   const [mediaInteractionEnabled, setMediaInteractionEnabled] = useState(false)
+  const [mobileMinimapOpen, setMobileMinimapOpen] = useState(false)
   const [statusMessage, setStatusMessage] = useState('Paste images, links, or text straight onto the board.')
   const recentPastedUrlsRef = useRef<Set<string>>(new Set())
   const recentPasteTimerRef = useRef<number | null>(null)
@@ -573,6 +586,7 @@ function App() {
         setAssetsOpen(false)
         setPasteOpen(false)
         setBoardDialog(null)
+        setMobileMinimapOpen(false)
       }
     }
 
@@ -704,6 +718,7 @@ function App() {
   const openPastePanel = useCallback(() => {
     setMenuOpen(false)
     setAssetsOpen(false)
+    setMobileMinimapOpen(false)
     setPasteOpen(true)
     void hydratePasteFromClipboard()
   }, [hydratePasteFromClipboard])
@@ -769,6 +784,7 @@ function App() {
     setBoardDraft(`Board ${nextIndex}`)
     setBoardDialog({ mode: 'create' })
     setMenuOpen(false)
+    setMobileMinimapOpen(false)
   }, [boards.length])
 
   const renameBoard = useCallback(() => {
@@ -778,6 +794,7 @@ function App() {
     setBoardDraft(page.name)
     setBoardDialog({ mode: 'rename' })
     setMenuOpen(false)
+    setMobileMinimapOpen(false)
   }, [activeBoardId, editor])
 
   const submitBoardDialog = useCallback(() => {
@@ -809,6 +826,7 @@ function App() {
       editor.setCurrentPage(pageId)
       setMenuOpen(false)
       setAssetsOpen(false)
+      setMobileMinimapOpen(false)
       setStatusMessage('Board switched.')
     },
     [editor]
@@ -862,6 +880,17 @@ function App() {
     editor?.zoomToFit()
   }, [editor])
 
+  const shareBoard = useCallback(async () => {
+    const shareUrl = window.location.href
+
+    try {
+      await navigator.clipboard.writeText(shareUrl)
+      setStatusMessage('Board link copied to clipboard.')
+    } catch {
+      setStatusMessage('Copy this link to share the board.')
+    }
+  }, [])
+
   const selectedShapes = useMemo(() => {
     if (!editor) return []
     return selectedShapeIds
@@ -894,11 +923,194 @@ function App() {
   )
 
   const boardName = boards.find((board) => board.id === activeBoardId)?.name ?? 'Board'
+  const boardCountLabel = `${boards.length} board${boards.length === 1 ? '' : 's'}`
+  const assetCountLabel = `${assets.length} asset${assets.length === 1 ? '' : 's'}`
+  const quickAssets = assets.slice(0, 4)
+
+  const minimap = useMemo(() => {
+    if (!editor) return null
+
+    const viewportBounds = editor.getViewportPageBounds()
+    const viewport: CanvasRect = {
+      x: viewportBounds.x,
+      y: viewportBounds.y,
+      w: viewportBounds.w,
+      h: viewportBounds.h,
+    }
+
+    const shapeRects: Array<{ id: TLShapeId; rect: CanvasRect }> = []
+    editor.getCurrentPageShapes().forEach((shape) => {
+      const bounds = editor.getShapePageBounds(shape.id)
+      if (!bounds) return
+
+      shapeRects.push({
+        id: shape.id,
+        rect: {
+          x: bounds.x,
+          y: bounds.y,
+          w: bounds.w,
+          h: bounds.h,
+        },
+      })
+    })
+
+    const sourceRects = shapeRects.length ? shapeRects.map((item) => item.rect) : [viewport]
+    const minX = Math.min(...sourceRects.map((rect) => rect.x), viewport.x)
+    const minY = Math.min(...sourceRects.map((rect) => rect.y), viewport.y)
+    const maxX = Math.max(...sourceRects.map((rect) => rect.x + rect.w), viewport.x + viewport.w)
+    const maxY = Math.max(...sourceRects.map((rect) => rect.y + rect.h), viewport.y + viewport.h)
+    const padding = 320
+
+    const scene = {
+      x: minX - padding,
+      y: minY - padding,
+      w: Math.max(1, maxX - minX + padding * 2),
+      h: Math.max(1, maxY - minY + padding * 2),
+    }
+
+    const toPercentRect = (rect: CanvasRect) => ({
+      x: ((rect.x - scene.x) / scene.w) * 100,
+      y: ((rect.y - scene.y) / scene.h) * 100,
+      w: (rect.w / scene.w) * 100,
+      h: (rect.h / scene.h) * 100,
+    })
+
+    return {
+      shapes: shapeRects.map((item) => ({ id: item.id, ...toPercentRect(item.rect) })),
+      viewport: toPercentRect(viewport),
+    }
+  }, [activeBoardId, assets, editor, selectedShapeIds, zoomLevel])
 
   return (
     <div className={`whiteboard-app ${mediaInteractionEnabled ? 'media-live' : 'media-locked'}`}>
       <div className="canvas-shell">
         <div className="canvas-grid-layer" aria-hidden="true" />
+        <div className="ornament-corner ornament-corner--top-left" aria-hidden="true" />
+        <div className="ornament-corner ornament-corner--top-right" aria-hidden="true" />
+        <div className="ornament-corner ornament-corner--bottom-left" aria-hidden="true" />
+        <div className="ornament-corner ornament-corner--bottom-right" aria-hidden="true" />
+
+        <aside className="workspace-sidebar">
+          <div className="workspace-brand">
+            <div className="workspace-brand__mark" aria-hidden="true">
+              <div className="workspace-brand__star" />
+            </div>
+            <div className="workspace-brand__copy">
+              <span className="workspace-brand__eyebrow">Whiteboard Studio</span>
+              <strong>Geometry Workspace</strong>
+            </div>
+          </div>
+
+          <div className="workspace-search">
+            <Search size={16} />
+            <span>Search boards and assets</span>
+          </div>
+
+          <section className="workspace-sidebar__section">
+            <div className="workspace-sidebar__section-header">
+              <span className="panel-kicker">Workspace</span>
+              <button type="button" className="sidebar-mini-action" onClick={createBoard} aria-label="Create board">
+                <Plus size={15} />
+              </button>
+            </div>
+            <div className="workspace-sidebar__summary">
+              <div>
+                <strong>{boardCountLabel}</strong>
+                <span>Layered, persistent boards</span>
+              </div>
+              <div>
+                <strong>{assetCountLabel}</strong>
+                <span>Images, embeds, and notes</span>
+              </div>
+            </div>
+          </section>
+
+          <section className="workspace-sidebar__section">
+            <div className="workspace-sidebar__section-header">
+              <span className="panel-kicker">Boards</span>
+              <button
+                type="button"
+                className="sidebar-link-button"
+                onClick={() => {
+                  setMenuOpen(true)
+                  setAssetsOpen(false)
+                }}
+              >
+                Open menu
+              </button>
+            </div>
+            <div className="sidebar-board-list">
+              {boards.map((board) => (
+                <button
+                  key={board.id}
+                  type="button"
+                  className={`sidebar-board-card ${board.id === activeBoardId ? 'sidebar-board-card--active' : ''}`}
+                  onClick={() => openBoard(board.id)}
+                >
+                  <div className="sidebar-board-card__glyph" aria-hidden="true">
+                    <Compass size={15} />
+                  </div>
+                  <div className="sidebar-board-card__copy">
+                    <strong>{board.name}</strong>
+                    <span>{board.id === activeBoardId ? 'Current canvas' : 'Switch board'}</span>
+                  </div>
+                  <ArrowRight size={14} />
+                </button>
+              ))}
+            </div>
+          </section>
+
+          <section className="workspace-sidebar__section workspace-sidebar__section--library">
+            <div className="workspace-sidebar__section-header">
+              <span className="panel-kicker">Library</span>
+              <button
+                type="button"
+                className="sidebar-link-button"
+                onClick={() => {
+                  setAssetsOpen(true)
+                  setMenuOpen(false)
+                }}
+              >
+                View all
+              </button>
+            </div>
+            {quickAssets.length ? (
+              <div className="sidebar-asset-stack">
+                {quickAssets.map((asset) => (
+                  <button key={asset.id} type="button" className="sidebar-asset-card" onClick={() => focusShape(asset.id)}>
+                    <div className="sidebar-asset-card__thumb">
+                      {asset.previewUrl ? (
+                        <img src={asset.previewUrl} alt={asset.title} />
+                      ) : asset.type === 'media' ? (
+                        <ArrowUpRight size={16} />
+                      ) : asset.type === 'bookmark' ? (
+                        <Link2 size={16} />
+                      ) : asset.type === 'note' ? (
+                        <StickyNote size={16} />
+                      ) : asset.type === 'text' ? (
+                        <Type size={16} />
+                      ) : (
+                        <Image size={16} />
+                      )}
+                    </div>
+                    <div className="sidebar-asset-card__copy">
+                      <strong>{asset.title}</strong>
+                      <span>{asset.subtitle}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="sidebar-empty-state">
+                <Sparkles size={16} />
+                <div>
+                  <strong>Start with a paste</strong>
+                  <span>Drop screenshots, links, or text onto the board.</span>
+                </div>
+              </div>
+            )}
+          </section>
+        </aside>
 
         <header className="app-topbar">
           <div className="app-topbar__left">
@@ -908,6 +1120,7 @@ function App() {
               onClick={() => {
                 setMenuOpen((open) => !open)
                 setAssetsOpen(false)
+                setMobileMinimapOpen(false)
               }}
               aria-label="Open main menu"
               title="Main menu"
@@ -953,7 +1166,8 @@ function App() {
           </div>
 
           <div className="app-topbar__right">
-            <div className="board-badge">
+            <div className="board-badge board-badge--board">
+              <Layers3 size={16} />
               <span>{boardName}</span>
             </div>
             <button
@@ -972,12 +1186,27 @@ function App() {
               onClick={() => {
                 setAssetsOpen((open) => !open)
                 setMenuOpen(false)
+                setMobileMinimapOpen(false)
               }}
               aria-label="Open assets"
               title="Assets"
             >
               <BookOpen size={18} />
               <span>Assets</span>
+            </button>
+            <button
+              type="button"
+              className="floating-icon-button floating-icon-button--label"
+              onClick={() => void shareBoard()}
+              aria-label="Share board"
+              title="Share"
+            >
+              <Share2 size={18} />
+              <span>Share</span>
+            </button>
+            <button type="button" className="profile-chip" aria-label="Workspace profile" title="Workspace profile">
+              <UserCircle2 size={18} />
+              <span>DS</span>
             </button>
           </div>
         </header>
@@ -1202,6 +1431,12 @@ function App() {
           />
         </div>
 
+        <div className="canvas-accent-banner" aria-hidden="true">
+          <div className="canvas-accent-banner__line" />
+          <span>Timeless geometry, modern sketching</span>
+          <div className="canvas-accent-banner__line" />
+        </div>
+
         {hasSelection && !assetsOpen && !menuOpen && !pasteOpen && !boardDialog && (
           <aside className="floating-panel properties-panel">
             <div className="floating-panel__header">
@@ -1354,6 +1589,58 @@ function App() {
             <Plus size={16} />
           </button>
         </div>
+
+        <button
+          type="button"
+          className={`minimap-toggle ${mobileMinimapOpen ? 'minimap-toggle--active' : ''}`}
+          onClick={() => setMobileMinimapOpen((open) => !open)}
+          aria-label="Toggle minimap"
+        >
+          <Compass size={16} />
+          <span>Map</span>
+        </button>
+
+        {minimap && (
+          <aside className={`minimap-panel ${mobileMinimapOpen ? 'minimap-panel--open' : ''}`}>
+            <div className="minimap-panel__header">
+              <div>
+                <span className="panel-kicker">Navigator</span>
+                <strong>{boardName}</strong>
+              </div>
+              <button type="button" className="sidebar-mini-action minimap-panel__close" onClick={() => setMobileMinimapOpen(false)} aria-label="Close minimap">
+                <X size={14} />
+              </button>
+            </div>
+            <div className="minimap-panel__viewport">
+              <svg viewBox="0 0 100 100" role="img" aria-label="Board minimap">
+                <rect x="0" y="0" width="100" height="100" rx="12" className="minimap-scene" />
+                {minimap.shapes.map((shape) => (
+                  <rect
+                    key={shape.id}
+                    x={clamp(shape.x, 1, 98)}
+                    y={clamp(shape.y, 1, 98)}
+                    width={Math.max(shape.w, 1.4)}
+                    height={Math.max(shape.h, 1.4)}
+                    rx="1.8"
+                    className={`minimap-shape ${selectedShapeIds.includes(shape.id) ? 'minimap-shape--active' : ''}`}
+                  />
+                ))}
+                <rect
+                  x={clamp(minimap.viewport.x, 0.8, 98)}
+                  y={clamp(minimap.viewport.y, 0.8, 98)}
+                  width={Math.max(minimap.viewport.w, 6)}
+                  height={Math.max(minimap.viewport.h, 6)}
+                  rx="4"
+                  className="minimap-window"
+                />
+              </svg>
+            </div>
+            <div className="minimap-panel__meta">
+              <span>{Math.round(zoomLevel * 100)}% zoom</span>
+              <span>{assetCountLabel}</span>
+            </div>
+          </aside>
+        )}
 
         <div className="mobile-toolbar" role="toolbar" aria-label="Mobile tools">
           {TOOLBAR_TOOLS.map((tool) => (
