@@ -42,6 +42,7 @@ export type GeometricIconName =
   | 'distribute'
   | 'link'
   | 'minus'
+  | 'fullscreen'
   | 'settings'
   | 'lock'
   | 'group'
@@ -340,6 +341,15 @@ function renderGlyph(name: GeometricIconName) {
       )
     case 'minus':
       return <path d="M6 12h12" />
+    case 'fullscreen':
+      return (
+        <>
+          <path d="M8 10V7.8H10.2" />
+          <path d="M16 10V7.8H13.8" />
+          <path d="M8 14v2.2h2.2" />
+          <path d="M16 14v2.2h-2.2" />
+        </>
+      )
     case 'settings':
       return (
         <>

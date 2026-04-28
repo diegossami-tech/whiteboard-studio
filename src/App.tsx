@@ -515,24 +515,25 @@ function GeometricMotifIcon() {
 function CanvasWatermarkMotif() {
   return (
     <svg viewBox="0 0 320 320" fill="none" aria-hidden="true">
-      <g opacity="0.22" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M160 38v244" />
-        <path d="M38 160h244" />
-        <path d="M74 74l172 172" />
-        <path d="M246 74 74 246" />
-        <rect x="96" y="96" width="128" height="128" rx="18" />
-        <rect x="116" y="116" width="88" height="88" rx="14" transform="rotate(45 160 160)" />
+      <g opacity="0.16" stroke="currentColor" strokeWidth="1.08" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M160 32v256" />
+        <path d="M32 160h256" />
+        <path d="M70 70l180 180" />
+        <path d="M250 70 70 250" />
+        <rect x="92" y="92" width="136" height="136" rx="0" />
+        <rect x="112" y="112" width="96" height="96" rx="0" transform="rotate(45 160 160)" />
+        <circle cx="160" cy="160" r="72" />
+        <circle cx="160" cy="160" r="104" />
       </g>
-      <g opacity="0.82" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M160 58c10 28 34 52 62 62-28 10-52 34-62 62-10-28-34-52-62-62 28-10 52-34 62-62Z" />
-        <path d="M160 70c-18 22-26 54-22 90 36 4 68-4 90-22-18-22-26-54-22-90-36-4-68 4-90 22Z" />
-        <path d="M160 70c18 22 26 54 22 90-36 4-68-4-90-22 18-22 26-54 22-90 36-4 68 4 90 22Z" />
-        <path d="M250 160c-22-18-54-26-90-22-4 36 4 68 22 90 22-18 54-26 90-22 4-36-4-68-22-90Z" />
-        <path d="M70 160c22-18 54-26 90-22 4 36-4 68-22 90-22-18-54-26-90-22-4-36 4-68 22-90Z" />
-        <path d="M160 116c8 20 24 36 44 44-20 8-36 24-44 44-8-20-24-36-44-44 20-8 36-24 44-44Z" />
-        <path d="M160 136c-5 10-14 19-24 24 10 5 19 14 24 24 5-10 14-19 24-24-10-5-19-14-24-24Z" />
+      <g opacity="0.9" stroke="currentColor" strokeWidth="1.55" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M160 58c14 34 40 60 74 74-34 14-60 40-74 74-14-34-40-60-74-74 34-14 60-40 74-74Z" />
+        <path d="M160 58c-26 22-39 58-36 102 44 3 80-10 102-36-26-22-39-58-36-102-44-3-80 10-102 36Z" />
+        <path d="M160 58c26 22 39 58 36 102-44 3-80-10-102-36 26-22 39-58 36-102 44-3 80 10 102 36Z" />
+        <path d="M262 160c-22-26-58-39-102-36-3 44 10 80 36 102 22-26 58-39 102-36 3-44-10-80-36-102Z" />
+        <path d="M58 160c22-26 58-39 102-36 3 44-10 80-36 102-22-26-58-39-102-36-3-44 10-80 36-102Z" />
+        <path d="M160 118c9 18 24 33 42 42-18 9-33 24-42 42-9-18-24-33-42-42 18-9 33-24 42-42Z" />
+        <path d="M160 136 168.5 151.5 186 154.5 173 167 176.5 184 160 175.7 143.5 184 147 167 134 154.5 151.5 151.5Z" />
       </g>
-      <circle cx="160" cy="160" r="6" fill="currentColor" opacity="0.18" />
     </svg>
   )
 }
@@ -1133,8 +1134,6 @@ function App() {
       <div className="canvas-shell">
         <div className="canvas-grid-layer" aria-hidden="true" />
         <div className="ornament-corner ornament-corner--top-left" aria-hidden="true" />
-        <div className="ornament-corner ornament-corner--top-right" aria-hidden="true" />
-        <div className="ornament-corner ornament-corner--bottom-left" aria-hidden="true" />
         <div className="ornament-corner ornament-corner--bottom-right" aria-hidden="true" />
 
         <aside className="workspace-sidebar">
@@ -1763,6 +1762,9 @@ function App() {
           </button>
           <button type="button" className="floating-icon-button" onClick={zoomIn} aria-label="Zoom in">
             <GeometricIcon name="plus" size={16} />
+          </button>
+          <button type="button" className="floating-icon-button" onClick={zoomToFit} aria-label="Fullscreen view" title="Fullscreen view">
+            <GeometricIcon name="fullscreen" size={16} />
           </button>
         </div>
 

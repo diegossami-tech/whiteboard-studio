@@ -96,9 +96,9 @@ img {
   width: 100%;
   height: 100%;
   background:
-    radial-gradient(circle at top left, rgba(179, 141, 76, 0.028), transparent 18%),
-    radial-gradient(circle at bottom right, rgba(42, 124, 109, 0.014), transparent 14%),
-    linear-gradient(180deg, #f8f3ea, #f3ecdf);
+    radial-gradient(circle at top left, rgba(179, 141, 76, 0.02), transparent 18%),
+    radial-gradient(circle at bottom right, rgba(179, 141, 76, 0.012), transparent 16%),
+    linear-gradient(180deg, #faf5ec, #f4ede2);
 }
 
 .canvas-shell {
@@ -107,7 +107,8 @@ img {
   height: 100%;
   overflow: hidden;
   background:
-    linear-gradient(180deg, rgba(255, 253, 248, 0.84), rgba(248, 242, 231, 0.9)),
+    radial-gradient(circle at 50% 42%, rgba(255, 255, 255, 0.3), transparent 34%),
+    linear-gradient(180deg, rgba(255, 253, 248, 0.88), rgba(248, 242, 231, 0.92)),
     var(--bg-soft);
 }
 
@@ -125,21 +126,21 @@ img {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(circle, rgba(22, 35, 56, 0.06) 0.68px, transparent 0.8px),
-    linear-gradient(rgba(22, 35, 56, 0.012) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(22, 35, 56, 0.012) 1px, transparent 1px);
-  background-size: 20px 20px, 120px 120px, 120px 120px;
+    radial-gradient(circle, rgba(196, 156, 95, 0.18) 0.72px, transparent 0.9px),
+    linear-gradient(rgba(212, 175, 55, 0.012) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(212, 175, 55, 0.012) 1px, transparent 1px);
+  background-size: 21px 21px, 126px 126px, 126px 126px;
   background-position: 0 0, -1px -1px, -1px -1px;
-  opacity: 0.38;
+  opacity: 0.28;
   mask-image: radial-gradient(circle at center, rgba(0, 0, 0, 0.9), transparent 98%);
   pointer-events: none;
 }
 
 .ornament-corner {
   position: absolute;
-  width: 150px;
+  width: 172px;
   aspect-ratio: 1;
-  opacity: 0.1;
+  opacity: 0.082;
   pointer-events: none;
   z-index: 1;
 }
@@ -153,53 +154,44 @@ img {
 
 .ornament-corner::before {
   background:
-    radial-gradient(circle at center, transparent 39%, rgba(179, 141, 76, 0.11) 39%, rgba(179, 141, 76, 0.11) 41%, transparent 41%),
+    radial-gradient(circle at center, transparent 39%, rgba(212, 175, 55, 0.12) 39%, rgba(212, 175, 55, 0.12) 41%, transparent 41%),
     conic-gradient(
       from 22.5deg,
-      rgba(179, 141, 76, 0.12) 0deg 22.5deg,
+      rgba(212, 175, 55, 0.11) 0deg 22.5deg,
       transparent 22.5deg 45deg,
-      rgba(179, 141, 76, 0.12) 45deg 67.5deg,
+      rgba(212, 175, 55, 0.11) 45deg 67.5deg,
       transparent 67.5deg 90deg,
-      rgba(179, 141, 76, 0.12) 90deg 112.5deg,
+      rgba(212, 175, 55, 0.11) 90deg 112.5deg,
       transparent 112.5deg 135deg,
-      rgba(179, 141, 76, 0.12) 135deg 157.5deg,
+      rgba(212, 175, 55, 0.11) 135deg 157.5deg,
       transparent 157.5deg 180deg,
-      rgba(179, 141, 76, 0.12) 180deg 202.5deg,
+      rgba(212, 175, 55, 0.11) 180deg 202.5deg,
       transparent 202.5deg 225deg,
-      rgba(179, 141, 76, 0.12) 225deg 247.5deg,
+      rgba(212, 175, 55, 0.11) 225deg 247.5deg,
       transparent 247.5deg 270deg,
-      rgba(179, 141, 76, 0.12) 270deg 292.5deg,
+      rgba(212, 175, 55, 0.11) 270deg 292.5deg,
       transparent 292.5deg 315deg,
-      rgba(179, 141, 76, 0.12) 315deg 337.5deg,
+      rgba(212, 175, 55, 0.11) 315deg 337.5deg,
       transparent 337.5deg 360deg
     );
 }
 
 .ornament-corner::after {
-  inset: 18px;
-  border: 1px solid rgba(179, 141, 76, 0.12);
-  border-radius: 16px;
+  inset: 20px;
+  border: 1px solid rgba(212, 175, 55, 0.12);
+  border-radius: 18px;
   transform: rotate(45deg);
 }
 
 .ornament-corner--top-left {
-  top: -34px;
-  left: calc(var(--sidebar-width) + 18px);
-}
-
-.ornament-corner--top-right {
-  top: -34px;
-  right: 26px;
-}
-
-.ornament-corner--bottom-left {
-  left: calc(var(--sidebar-width) + 18px);
-  bottom: -42px;
+  top: -48px;
+  left: calc(var(--sidebar-width) - 6px);
 }
 
 .ornament-corner--bottom-right {
-  right: 26px;
-  bottom: -42px;
+  width: 232px;
+  right: -28px;
+  bottom: -58px;
 }
 
 .workspace-sidebar {
@@ -949,18 +941,20 @@ img {
 
 .canvas-quick-actions {
   position: absolute;
-  top: 108px;
-  right: 336px;
+  top: 102px;
+  left: calc((100% + var(--sidebar-width) - 308px) / 2);
   z-index: 19;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px;
-  border-radius: 20px;
-  background: rgba(255, 252, 246, 0.92);
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 18px;
+  background: rgba(255, 252, 246, 0.94);
   border: 1px solid rgba(179, 141, 76, 0.08);
   backdrop-filter: blur(18px);
-  box-shadow: var(--shadow-soft);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 10px 24px rgba(18, 29, 47, 0.06);
 }
 
 .canvas-showcase-hint {
@@ -988,8 +982,8 @@ img {
 }
 
 .canvas-center-watermark--visible {
-  opacity: 0.62;
-  filter: saturate(1.02);
+  opacity: 0.68;
+  filter: saturate(1.01);
 }
 
 .canvas-center-watermark--faded {
@@ -1000,25 +994,25 @@ img {
 
 .canvas-center-watermark__motif-shell {
   position: relative;
-  width: 318px;
-  height: 318px;
+  width: 356px;
+  height: 356px;
   display: grid;
   place-items: center;
-  filter: drop-shadow(0 18px 32px rgba(179, 141, 76, 0.06));
+  filter: drop-shadow(0 18px 28px rgba(179, 141, 76, 0.04));
 }
 
 .canvas-center-watermark__motif {
-  width: 236px;
-  height: 236px;
+  width: 286px;
+  height: 286px;
   display: grid;
   place-items: center;
-  color: rgba(195, 136, 47, 0.9);
+  color: rgba(202, 150, 57, 0.78);
 }
 
 .canvas-center-watermark__motif svg {
   width: 100%;
   height: 100%;
-  opacity: 0.9;
+  opacity: 0.88;
 }
 
 .canvas-center-watermark__label { display: none; }
@@ -1654,7 +1648,7 @@ img {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 6px;
+  padding: 8px;
   border-radius: 18px;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(250, 245, 236, 0.9));
   border: 1px solid rgba(21, 33, 54, 0.06);
@@ -1665,7 +1659,8 @@ img {
 
 .zoom-controls__level {
   height: 42px;
-  padding: 0 16px;
+  min-width: 76px;
+  padding: 0 18px;
   border-radius: 14px;
   cursor: pointer;
 }
