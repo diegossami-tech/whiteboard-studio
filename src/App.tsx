@@ -482,7 +482,24 @@ function ToolButton({
 }
 
 function GeometricMotifIcon() {
-  return <GeometricIcon name="geometry" size={18} />
+  return (
+    <svg viewBox="0 0 48 48" fill="none" aria-hidden="true">
+      <g
+        stroke="currentColor"
+        strokeWidth="1.9"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        vectorEffect="non-scaling-stroke"
+      >
+        <path d="M24 5.5c2.8 6.3 7.7 11.2 14 14-6.3 2.8-11.2 7.7-14 14-2.8-6.3-7.7-11.2-14-14 6.3-2.8 11.2-7.7 14-14Z" />
+        <path d="M24 9.3c-4.8 4.2-7.4 10.6-7.2 17.1 6.5.2 12.9-2.4 17.1-7.2-4.2-4.8-6.8-11.2-7.2-17.1Z" />
+        <path d="M24 9.3c4.8 4.2 7.4 10.6 7.2 17.1-6.5.2-12.9-2.4-17.1-7.2 4.2-4.8 6.8-11.2 7.2-17.1Z" />
+        <path d="M38.2 24c-4.2-4.8-10.6-7.4-17.1-7.2-.2 6.5 2.4 12.9 7.2 17.1 4.8-4.2 11.2-6.8 17.1-7.2Z" />
+        <path d="M9.8 24c4.2-4.8 10.6-7.4 17.1-7.2.2 6.5-2.4 12.9-7.2 17.1-4.8-4.2-11.2-6.8-17.1-7.2Z" />
+        <path d="M24 16.1c1.8 3.8 4.9 6.9 8.7 8.7-3.8 1.8-6.9 4.9-8.7 8.7-1.8-3.8-4.9-6.9-8.7-8.7 3.8-1.8 6.9-4.9 8.7-8.7Z" />
+      </g>
+    </svg>
+  )
 }
 
 function CanvasWatermarkMotif() {
