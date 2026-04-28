@@ -4,7 +4,6 @@ import {
   createShapeId,
   DefaultColorStyle,
   DefaultDashStyle,
-  DefaultFontStyle,
   DefaultSizeStyle,
   GeoShapeGeoStyle,
   PageRecordType,
@@ -28,7 +27,7 @@ type MediaPasteItem =
 type BoardEntry = Pick<TLPage, 'id' | 'name'>
 type ToolbarTool = 'select' | 'hand' | 'rectangle' | 'ellipse' | 'line' | 'arrow' | 'text' | 'draw' | 'eraser'
 type BoardDialogState = { mode: 'create' | 'rename' } | null
-type SidebarSection = 'files' | 'recent' | 'favorites' | 'shared' | 'library' | 'templates' | 'examples' | 'trash'
+type SidebarSection = 'files' | 'recent' | 'favorites' | 'shared' | 'library' | 'templates' | 'trash'
 type AssetSummary = {
   id: TLShapeId
   type: 'image' | 'media' | 'bookmark' | 'text' | 'note'
@@ -41,7 +40,6 @@ type CanvasRect = { x: number; y: number; w: number; h: number }
 
 const COLOR_OPTIONS = ['black', 'blue', 'green', 'yellow', 'red'] as const
 const SIZE_OPTIONS = ['s', 'm', 'l', 'xl'] as const
-const FONT_OPTIONS = ['draw', 'sans', 'serif', 'mono'] as const
 const DASH_BUTTONS: Array<{ value: 'solid' | 'dashed' | 'dotted'; icon: GeometricIconName; label: string }> = [
   { value: 'solid', icon: 'stroke-solid', label: 'Traco continuo' },
   { value: 'dashed', icon: 'stroke-dashed', label: 'Traco tracejado' },
@@ -65,6 +63,8 @@ const TOOLBAR_TOOLS: Array<{
 ]
 
 const DOCK_DIVIDERS = new Set<ToolbarTool>(['hand', 'arrow', 'eraser'])
+const DESKTOP_FOLDERS = ['Projetos', 'Estudos', 'Ideias', 'Pessoais', 'Arquivos'] as const
+const DESKTOP_PROJECT_NAME = 'Projeto Atlas'
 
 function richTextToPlainText(value: unknown): string {
   if (!value || typeof value !== 'object') return ''
@@ -948,14 +948,6 @@ function App() {
         return
       }
 
-      if (section === 'examples') {
-        setMenuOpen(false)
-        setAssetsOpen(false)
-        setPasteOpen(false)
-        setStatusMessage('A galeria de exemplos entra no próximo passo.')
-        return
-      }
-
       if (section === 'recent') {
         setMenuOpen(false)
         setAssetsOpen(false)
@@ -1002,17 +994,14 @@ function App() {
       .filter((shape): shape is TLShape => Boolean(shape))
   }, [editor, selectedShapeIds])
 
-  const primarySelectedShape = selectedShapes[0] ?? null
   const hasSelection = selectedShapes.length > 0
   const isMediaSelection = selectedShapes.some(
     (shape) => shape.type === 'embed' || shape.type === INSTAGRAM_REEL_SHAPE_TYPE
   )
-  const hasTextSelection = selectedShapes.some((shape) => shape.type === 'text' || shape.type === 'note')
 
   const colorStyle = getKnownStyle(editor, DefaultColorStyle, 'black')
   const sizeStyle = getKnownStyle(editor, DefaultSizeStyle, 'm')
   const dashStyle = getKnownStyle(editor, DefaultDashStyle, 'solid')
-  const fontStyle = getKnownStyle(editor, DefaultFontStyle, 'sans')
 
   useEffect(() => {
     if (!hasSelection) {
@@ -1042,7 +1031,7 @@ function App() {
     [applyStyle, sizeStyle]
   )
 
-  const boardName = boards.find((board) => board.id === activeBoardId)?.name ?? 'Board'
+  const boardName = boards.find((board) => board.id === activeBoardId)?.name ?? DESKTOP_PROJECT_NAME
   const assetCountLabel = `${assets.length} item${assets.length === 1 ? '' : 's'}`
   const isBoardEmpty = assets.length === 0
 
@@ -1175,10 +1164,6 @@ function App() {
                 <GeometricIcon name="templates" size={16} />
                 <span>Templates</span>
               </button>
-              <button type="button" className={`sidebar-nav-item ${activeSidebarSection === 'examples' ? 'sidebar-nav-item--active' : ''}`} onClick={() => openSidebarSection('examples')}>
-                <GeometricIcon name="examples" size={16} />
-                <span>Exemplos</span>
-              </button>
               <button type="button" className={`sidebar-nav-item ${activeSidebarSection === 'trash' ? 'sidebar-nav-item--active' : ''}`} onClick={() => openSidebarSection('trash')}>
                 <GeometricIcon name="trash" size={16} />
                 <span>Lixeira</span>
@@ -1194,19 +1179,19 @@ function App() {
               </button>
             </div>
             <div className="sidebar-board-list">
-              {boards.map((board) => (
+              {DESKTOP_FOLDERS.map((folderName) => (
                 <button
-                  key={board.id}
+                  key={folderName}
                   type="button"
-                  className={`sidebar-board-card ${board.id === activeBoardId ? 'sidebar-board-card--active' : ''}`}
-                  onClick={() => openBoard(board.id)}
+                  className={`sidebar-board-card ${folderName === 'Projetos' ? 'sidebar-board-card--active' : ''}`}
+                  onClick={() => setStatusMessage(`A pasta ${folderName} entra no próximo passo.`)}
                 >
                   <div className="sidebar-board-card__glyph" aria-hidden="true">
                     <GeometricIcon name="folder" size={15} />
                   </div>
                   <div className="sidebar-board-card__copy">
-                    <strong>{board.name}</strong>
-                    <span>{board.id === activeBoardId ? 'Aberta agora' : 'Abrir pasta'}</span>
+                    <strong>{folderName}</strong>
+                    <span>{folderName === 'Projetos' ? 'Aberta agora' : 'Abrir pasta'}</span>
                   </div>
                 </button>
               ))}
@@ -1215,7 +1200,7 @@ function App() {
 
           <div className="upgrade-card">
             <div className="upgrade-card__icon" aria-hidden="true">
-              <CanvasWatermarkMotif />
+              <GeometricMotifIcon />
             </div>
             <div className="upgrade-card__copy">
               <strong>Plano Pro</strong>
@@ -1250,9 +1235,9 @@ function App() {
               onClick={renameBoard}
               aria-label="Current project selector"
             >
+              <GeometricIcon name="project" size={18} />
               <div className="board-selector__copy">
-                <span className="panel-kicker">Projeto atual</span>
-                <strong>{boardName}</strong>
+                <strong>{DESKTOP_PROJECT_NAME}</strong>
               </div>
               <GeometricIcon name="chevron-down" size={16} />
             </button>
@@ -1281,16 +1266,21 @@ function App() {
           </div>
 
           <div className="app-topbar__center">
-            <div className="topbar-status">
-              <GeometricIcon name="cloud" size={16} />
-              <span>Sincronizado</span>
-            </div>
             <div className="app-topbar__mobile-brand" aria-hidden="true">
-              <CanvasWatermarkMotif />
+              <GeometricMotifIcon />
             </div>
           </div>
 
           <div className="app-topbar__right">
+            <button
+              type="button"
+              className="floating-icon-button"
+              onClick={() => setStatusMessage('O status de sincronização entra no próximo passo.')}
+              aria-label="Sincronização na nuvem"
+              title="Sincronização na nuvem"
+            >
+              <GeometricIcon name="cloud" size={18} />
+            </button>
             <button
               type="button"
               className="floating-icon-button floating-icon-button--label"
@@ -1302,8 +1292,10 @@ function App() {
               <span>Compartilhar</span>
             </button>
             <button type="button" className="profile-chip" aria-label="Workspace profile" title="Workspace profile">
-              <GeometricIcon name="profile" size={18} />
               <span>DS</span>
+            </button>
+            <button type="button" className="sidebar-mini-action sidebar-mini-action--ghost topbar-chevron" aria-label="Abrir perfil" title="Abrir perfil">
+              <GeometricIcon name="chevron-down" size={16} />
             </button>
           </div>
         </header>
@@ -1556,50 +1548,13 @@ function App() {
               <CanvasWatermarkMotif />
             </div>
           </div>
-          <span className="canvas-center-watermark__label">Begin with structure.</span>
         </div>
-
-        {isBoardEmpty && (
-          <div className="canvas-showcase-hint" aria-hidden="true">
-            <div className="canvas-showcase-hint__note canvas-showcase-hint__note--left">
-              <strong>Estrutura</strong>
-              <span>Traz clareza ao que é complexo.</span>
-            </div>
-            <div className="canvas-showcase-hint__note canvas-showcase-hint__note--top-right">
-              <strong>Ideias</strong>
-              <span>Nascem da conexão de pensamentos.</span>
-            </div>
-            <div className="canvas-showcase-hint__note canvas-showcase-hint__note--bottom-right">
-              <strong>Propósito</strong>
-              <span>Transforma ideias em realidade.</span>
-            </div>
-          </div>
-        )}
 
         {!assetsOpen && !menuOpen && !pasteOpen && !boardDialog && (
           <aside className={`floating-panel properties-panel ${mobilePropertiesOpen ? 'properties-panel--mobile-open' : ''}`}>
             <div className="floating-panel__header">
               <div>
-                <span className="panel-kicker">Propriedades</span>
-                <h2>
-                  {!hasSelection
-                    ? 'Ajustes do canvas'
-                    : selectedShapes.length > 1
-                    ? `${selectedShapes.length} itens selecionados`
-                    : primarySelectedShape?.type === INSTAGRAM_REEL_SHAPE_TYPE
-                      ? 'Instagram Reel'
-                      : primarySelectedShape?.type === 'embed'
-                        ? 'Mídia incorporada'
-                        : primarySelectedShape?.type === 'bookmark'
-                          ? 'Cartão de link'
-                          : primarySelectedShape?.type === 'image'
-                            ? 'Imagem'
-                            : primarySelectedShape?.type === 'note'
-                              ? 'Nota'
-                              : primarySelectedShape?.type === 'text'
-                                ? 'Texto'
-                                : 'Seleção'}
-                </h2>
+                <h2>Propriedades</h2>
               </div>
               <button type="button" className="sidebar-mini-action sidebar-mini-action--ghost properties-panel__collapse" aria-label="Recolher painel" title="Recolher painel">
                 <GeometricIcon name="chevron-left" size={15} />
@@ -1609,38 +1564,6 @@ function App() {
             {!hasSelection && (
               <div className="properties-empty">
                 <span>Selecione um elemento para ajustar aparência, camadas e ações.</span>
-              </div>
-            )}
-
-            <div className="properties-panel__section">
-              <span>Visão</span>
-              <div className="inline-actions">
-                <button type="button" className="secondary-icon-button" onClick={() => activateTool('hand')} title="Mover canvas">
-                  <GeometricIcon name="hand" size={16} />
-                </button>
-                <button type="button" className="secondary-icon-button" onClick={() => setStatusMessage('Os layouts rápidos entram no próximo passo.')} title="Layouts rápidos">
-                  <GeometricIcon name="layout" size={16} />
-                </button>
-                <button type="button" className="secondary-icon-button" onClick={() => setStatusMessage('Os controles de distribuição entram no próximo passo.')} title="Distribuição">
-                  <GeometricIcon name="distribute" size={16} />
-                </button>
-                <button type="button" className="secondary-icon-button" onClick={() => setAssetsOpen(true)} title="Biblioteca">
-                  <GeometricIcon name="templates" size={16} />
-                </button>
-              </div>
-            </div>
-
-            {isMediaSelection && (
-              <div className="properties-panel__section">
-                <span>Mídia incorporada</span>
-                <button
-                  type="button"
-                  className="secondary-button secondary-button--full"
-                  onClick={() => setMediaInteractionEnabled((enabled) => !enabled)}
-                >
-                  <GeometricIcon name="arrow" size={16} />
-                  <span>{mediaInteractionEnabled ? 'Bloquear mídia para editar' : 'Ativar reprodução e interação'}</span>
-                </button>
               </div>
             )}
 
@@ -1704,24 +1627,6 @@ function App() {
                 </div>
               </div>
             </div>
-
-            {hasTextSelection && (
-              <div className="properties-panel__section">
-                <span>Fonte</span>
-                <div className="chip-row">
-                  {FONT_OPTIONS.map((font) => (
-                    <button
-                      key={font}
-                      type="button"
-                      className={`chip-button ${fontStyle === font ? 'chip-button--active' : ''}`}
-                      onClick={() => applyStyle(DefaultFontStyle, font)}
-                    >
-                      {font}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
 
             <div className="properties-panel__section">
               <span>Camadas</span>
@@ -1816,8 +1721,8 @@ function App() {
             aria-label="Geometric tool"
             title="Geometric tool"
           >
-            <CanvasWatermarkMotif />
-            <span>Geometria</span>
+            <GeometricMotifIcon />
+            <span>Motif</span>
           </button>
         </div>
 
