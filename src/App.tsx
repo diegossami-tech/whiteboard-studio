@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   AlignHorizontalJustifyCenter,
   ArrowRight,
@@ -96,6 +96,8 @@ const TOOLBAR_TOOLS: Array<{
   { id: 'draw', label: 'Draw', icon: PencilLine },
   { id: 'eraser', label: 'Eraser', icon: Eraser },
 ]
+
+const DOCK_DIVIDERS = new Set<ToolbarTool>(['hand', 'arrow', 'eraser'])
 
 function richTextToPlainText(value: unknown): string {
   if (!value || typeof value !== 'object') return ''
@@ -927,10 +929,6 @@ function App() {
     }
   }, [])
 
-  const pingSync = useCallback(() => {
-    setStatusMessage('All changes synced to this device.')
-  }, [])
-
   const activateGeometricMode = useCallback(() => {
     if (!editor) return
     editor.setCurrentTool('draw')
@@ -1131,6 +1129,7 @@ function App() {
             <div className="workspace-brand__copy">
               <span className="workspace-brand__eyebrow">Whiteboard Studio</span>
               <strong>Workspace</strong>
+              <small className="workspace-brand__subtle">Private visual canvas</small>
             </div>
           </div>
 
@@ -1236,7 +1235,7 @@ function App() {
               aria-label="Current project selector"
             >
               <div className="board-selector__copy">
-                <span className="panel-kicker">Current project</span>
+                <span className="panel-kicker">Project</span>
                 <strong>{boardName}</strong>
               </div>
               <ChevronDown size={16} />
@@ -1273,15 +1272,6 @@ function App() {
           </div>
 
           <div className="app-topbar__right">
-            <button
-              type="button"
-              className="floating-icon-button"
-              onClick={pingSync}
-              aria-label="Cloud sync status"
-              title="Cloud sync"
-            >
-              <Cloud size={18} />
-            </button>
             <button
               type="button"
               className="floating-icon-button floating-icon-button--label"
@@ -1554,7 +1544,7 @@ function App() {
 
             {!hasSelection && (
               <div className="properties-empty">
-                <span>Select an object on the canvas to inspect and edit it here.</span>
+                <span>Choose an object to edit appearance, layers, and actions.</span>
               </div>
             )}
 
@@ -1700,13 +1690,15 @@ function App() {
 
         <div className="floating-toolbar floating-toolbar--dock" role="toolbar" aria-label="Drawing tools">
           {TOOLBAR_TOOLS.map((tool) => (
-            <ToolButton
-              key={tool.id}
-              active={activeTool === tool.id}
-              icon={tool.icon}
-              label={tool.label}
-              onClick={() => activateTool(tool.id)}
-            />
+            <Fragment key={tool.id}>
+              <ToolButton
+                active={activeTool === tool.id}
+                icon={tool.icon}
+                label={tool.label}
+                onClick={() => activateTool(tool.id)}
+              />
+              {DOCK_DIVIDERS.has(tool.id) ? <span className="dock-divider" aria-hidden="true" /> : null}
+            </Fragment>
           ))}
           <button
             type="button"
