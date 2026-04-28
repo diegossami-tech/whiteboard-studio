@@ -1202,7 +1202,7 @@ function App() {
           />
         </div>
 
-        {hasSelection && (
+        {hasSelection && !assetsOpen && !menuOpen && !pasteOpen && !boardDialog && (
           <aside className="floating-panel properties-panel">
             <div className="floating-panel__header">
               <div>
