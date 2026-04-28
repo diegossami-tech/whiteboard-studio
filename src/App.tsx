@@ -486,7 +486,7 @@ function GeometricMotifIcon() {
     <svg viewBox="0 0 40 40" fill="none" aria-hidden="true">
       <g
         stroke="currentColor"
-        strokeWidth="1.8"
+        strokeWidth="1.34"
         strokeLinecap="round"
         strokeLinejoin="round"
         vectorEffect="non-scaling-stroke"
