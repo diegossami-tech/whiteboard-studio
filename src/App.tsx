@@ -1207,7 +1207,8 @@ function App() {
               <span>Recursos avançados para organizar suas ideias.</span>
             </div>
             <button type="button" className="upgrade-card__button" onClick={() => setStatusMessage('O fluxo de upgrade entra no próximo passo.')}>
-              Upgrade
+              <GeometricIcon name="geometry" size={15} framed />
+              <span>Upgrade</span>
             </button>
           </div>
         </aside>

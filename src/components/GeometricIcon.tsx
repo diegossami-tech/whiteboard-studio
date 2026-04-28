@@ -418,7 +418,7 @@ export function GeometricIcon({ name, size = 18, framed = false, className, ...p
       height={size}
       fill="none"
       stroke="currentColor"
-      strokeWidth="1.58"
+      strokeWidth="1.48"
       strokeLinecap="round"
       strokeLinejoin="round"
       shapeRendering="geometricPrecision"
@@ -426,7 +426,7 @@ export function GeometricIcon({ name, size = 18, framed = false, className, ...p
       aria-hidden="true"
       {...props}
     >
-      {framed ? <path d={framePath()} opacity="0.26" /> : null}
+      {framed ? <path d={framePath()} opacity="0.22" /> : null}
       {renderGlyph(name)}
     </svg>
   )
