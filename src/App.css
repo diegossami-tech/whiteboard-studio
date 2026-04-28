@@ -204,9 +204,9 @@ img {
 }
 
 .ornament-corner--top-left {
-  top: 0;
-  left: calc(var(--sidebar-width) - 1px);
-  width: 182px;
+  top: 102px;
+  left: calc(var(--sidebar-width) + 2px);
+  width: 172px;
 }
 
 .ornament-corner--top-left::before,
@@ -215,9 +215,9 @@ img {
 }
 
 .ornament-corner--bottom-right {
-  width: 284px;
-  right: 0;
-  bottom: 0;
+  width: 248px;
+  right: 324px;
+  bottom: 22px;
 }
 
 .ornament-corner--bottom-right::before,
@@ -1025,19 +1025,19 @@ img {
 
 .canvas-center-watermark__motif-shell {
   position: relative;
-  width: 388px;
-  height: 388px;
+  width: 376px;
+  height: 376px;
   display: grid;
   place-items: center;
   filter: drop-shadow(0 16px 28px rgba(179, 141, 76, 0.035));
 }
 
 .canvas-center-watermark__motif {
-  width: 304px;
-  height: 304px;
+  width: 288px;
+  height: 288px;
   display: grid;
   place-items: center;
-  color: rgba(202, 150, 57, 0.68);
+  color: rgba(202, 150, 57, 0.66);
 }
 
 .canvas-center-watermark__motif svg {
@@ -1862,13 +1862,17 @@ img {
   }
 
   .canvas-center-watermark__motif-shell {
-    width: 336px;
-    height: 336px;
+    width: 324px;
+    height: 324px;
   }
 
   .canvas-center-watermark__motif {
-    width: 252px;
-    height: 252px;
+    width: 244px;
+    height: 244px;
+  }
+
+  .ornament-corner--bottom-right {
+    right: 304px;
   }
 }
 
@@ -1892,13 +1896,22 @@ img {
   }
 
   .canvas-center-watermark__motif-shell {
-    width: 300px;
-    height: 300px;
+    width: 288px;
+    height: 288px;
   }
 
   .canvas-center-watermark__motif {
-    width: 222px;
-    height: 222px;
+    width: 214px;
+    height: 214px;
+  }
+
+  .ornament-corner--top-left {
+    left: calc(var(--sidebar-width) + 2px);
+  }
+
+  .ornament-corner--bottom-right {
+    right: 288px;
+    width: 228px;
   }
 }
 

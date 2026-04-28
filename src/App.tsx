@@ -520,44 +520,27 @@ function MotifMiniPaths() {
   )
 }
 
-function CanvasMotifFlowerPaths() {
-  return (
-    <>
-      <rect x="57.6" y="57.6" width="68.8" height="68.8" rx="7.2" />
-      <rect x="193.6" y="57.6" width="68.8" height="68.8" rx="7.2" />
-      <rect x="57.6" y="193.6" width="68.8" height="68.8" rx="7.2" />
-      <rect x="193.6" y="193.6" width="68.8" height="68.8" rx="7.2" />
-
-      <path d="M160 38.4C199.2 72 200.8 120 160 160c-40.8-40-39.2-88 0-121.6Z" />
-      <path d="M281.6 160C248 199.2 200 200.8 160 160c40-40.8 88-39.2 121.6 0Z" />
-      <path d="M160 281.6C120.8 248 119.2 200 160 160c40.8 40 39.2 88 0 121.6Z" />
-      <path d="M38.4 160C72 120.8 120 119.2 160 160c-40 40.8-88 39.2-121.6 0Z" />
-
-      <path d="M91.2 91.2C131.2 91.2 153.6 112.8 160 160c-47.2-6.4-68.8-28.8-68.8-68.8Z" />
-      <path d="M228.8 91.2C228.8 131.2 207.2 153.6 160 160c6.4-47.2 28.8-68.8 68.8-68.8Z" />
-      <path d="M228.8 228.8C188.8 228.8 166.4 207.2 160 160c47.2 6.4 68.8 28.8 68.8 68.8Z" />
-      <path d="M91.2 228.8C91.2 188.8 112.8 166.4 160 160c-6.4 47.2-28.8 68.8-68.8 68.8Z" />
-
-      <path d="M160 115.2 174.4 141.6 204.8 145.6 183.2 166.4 188.8 196 160 181.6 131.2 196 136.8 166.4 115.2 145.6 145.6 141.6Z" />
-    </>
-  )
-}
-
 function CanvasWatermarkMotif() {
   return (
     <svg viewBox="0 0 320 320" fill="none" aria-hidden="true">
-      <g opacity="0.14" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
+      <g opacity="0.12" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
         <path d="M160 34v252" />
         <path d="M34 160h252" />
-        <path d="M74 74 246 246" />
-        <path d="M246 74 74 246" />
-        <rect x="72" y="72" width="176" height="176" rx="0" />
-        <rect x="96" y="96" width="128" height="128" rx="0" transform="rotate(45 160 160)" />
-        <circle cx="160" cy="160" r="88" />
-        <circle cx="160" cy="160" r="58" />
+        <path d="M72 72 248 248" />
+        <path d="M248 72 72 248" />
+        <rect x="86" y="86" width="148" height="148" rx="0" />
+        <rect x="108" y="108" width="104" height="104" rx="0" transform="rotate(45 160 160)" />
+        <circle cx="160" cy="160" r="84" />
       </g>
-      <g opacity="0.92" stroke="currentColor" strokeWidth="1.46" strokeLinecap="round" strokeLinejoin="round">
-        <CanvasMotifFlowerPaths />
+      <g
+        opacity="0.9"
+        stroke="currentColor"
+        strokeWidth="1.28"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        transform="translate(40 40) scale(6)"
+      >
+        <MotifMiniPaths />
       </g>
     </svg>
   )
