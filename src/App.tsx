@@ -1,44 +1,5 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  AlignHorizontalJustifyCenter,
-  ArrowRight,
-  ArrowUpRight,
-  BookOpen,
-  BringToFront,
-  ChevronLeft,
-  ChevronDown,
-  Circle,
-  Compass,
-  Copy,
-  CopyPlus,
-  Clock3,
-  Eraser,
-  Folder,
-  FolderKanban,
-  Hand,
-  Image,
-  Layers3,
-  Link2,
-  LayoutTemplate,
-  Menu,
-  Minus,
-  MousePointer2,
-  PencilLine,
-  Plus,
-  Redo2,
-  Share2,
-  Square,
-  Star,
-  Cloud,
-  StickyNote,
-  Trash2,
-  Type,
-  Undo2,
-  UserCircle2,
-  Users,
-  X,
-} from 'lucide-react'
-import {
   createEmptyBookmarkShape,
   createShapeId,
   DefaultColorStyle,
@@ -56,6 +17,7 @@ import {
   type TLShape,
   type TLShapeId,
 } from 'tldraw'
+import { GeometricIcon, type GeometricIconName } from './components/GeometricIcon'
 import { INSTAGRAM_REEL_SHAPE_TYPE, InstagramReelShapeUtil } from './shapes/InstagramReelShapeUtil'
 import './App.css'
 
@@ -87,17 +49,17 @@ const FONT_OPTIONS = ['draw', 'sans', 'serif', 'mono'] as const
 const TOOLBAR_TOOLS: Array<{
   id: ToolbarTool
   label: string
-  icon: typeof MousePointer2
+  icon: GeometricIconName
 }> = [
-  { id: 'select', label: 'Selecionar', icon: MousePointer2 },
-  { id: 'hand', label: 'Mão', icon: Hand },
-  { id: 'rectangle', label: 'Forma', icon: Square },
-  { id: 'ellipse', label: 'Círculo', icon: Circle },
-  { id: 'line', label: 'Linha', icon: Minus },
-  { id: 'arrow', label: 'Seta', icon: ArrowUpRight },
-  { id: 'text', label: 'Texto', icon: Type },
-  { id: 'draw', label: 'Desenho', icon: PencilLine },
-  { id: 'eraser', label: 'Borracha', icon: Eraser },
+  { id: 'select', label: 'Selecionar', icon: 'select' },
+  { id: 'hand', label: 'Mão', icon: 'hand' },
+  { id: 'rectangle', label: 'Forma', icon: 'rectangle' },
+  { id: 'ellipse', label: 'Círculo', icon: 'circle' },
+  { id: 'line', label: 'Linha', icon: 'line' },
+  { id: 'arrow', label: 'Seta', icon: 'arrow' },
+  { id: 'text', label: 'Texto', icon: 'text' },
+  { id: 'draw', label: 'Desenho', icon: 'draw' },
+  { id: 'eraser', label: 'Borracha', icon: 'eraser' },
 ]
 
 const DOCK_DIVIDERS = new Set<ToolbarTool>(['hand', 'arrow', 'eraser'])
@@ -493,13 +455,13 @@ function normalizeTool(editor: Editor | null, rawToolId: string): ToolbarTool {
 function ToolButton({
   active,
   compact,
-  icon: Icon,
+  icon,
   label,
   onClick,
 }: {
   active: boolean
   compact?: boolean
-  icon: typeof MousePointer2
+  icon: GeometricIconName
   label: string
   onClick: () => void
 }) {
@@ -511,25 +473,14 @@ function ToolButton({
       aria-label={label}
       title={label}
     >
-      <Icon size={18} />
+      <GeometricIcon name={icon} size={18} />
       {!compact && <span>{label}</span>}
     </button>
   )
 }
 
 function GeometricMotifIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-      <path
-        d="M12 2.4l2.2 3.5 4-.1-1.8 3.6 3.2 2.4-3.2 2.4 1.8 3.6-4-.1-2.2 3.5-2.2-3.5-4 .1 1.8-3.6L2.6 12l3.2-2.4-1.8-3.6 4 .1L12 2.4z"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.4"
-        strokeLinejoin="round"
-      />
-      <circle cx="12" cy="12" r="2.2" fill="currentColor" />
-    </svg>
-  )
+  return <GeometricIcon name="geometry" size={18} />
 }
 
 function clamp(value: number, min: number, max: number) {
@@ -1146,7 +1097,7 @@ function App() {
               </div>
             </div>
             <button type="button" className="sidebar-mini-action sidebar-mini-action--ghost" aria-label="Recolher sidebar" title="Recolher sidebar">
-              <ChevronLeft size={16} />
+              <GeometricIcon name="chevron-left" size={16} />
             </button>
           </div>
 
@@ -1156,19 +1107,19 @@ function App() {
             </div>
             <nav className="sidebar-nav-list" aria-label="Navegação principal">
               <button type="button" className={`sidebar-nav-item ${activeSidebarSection === 'files' ? 'sidebar-nav-item--active' : ''}`} onClick={() => openSidebarSection('files')}>
-                <FolderKanban size={16} />
+                <GeometricIcon name="files" size={16} />
                 <span>Meus arquivos</span>
               </button>
               <button type="button" className={`sidebar-nav-item ${activeSidebarSection === 'recent' ? 'sidebar-nav-item--active' : ''}`} onClick={() => openSidebarSection('recent')}>
-                <Clock3 size={16} />
+                <GeometricIcon name="recent" size={16} />
                 <span>Recentes</span>
               </button>
               <button type="button" className={`sidebar-nav-item ${activeSidebarSection === 'favorites' ? 'sidebar-nav-item--active' : ''}`} onClick={() => openSidebarSection('favorites')}>
-                <Star size={16} />
+                <GeometricIcon name="favorites" size={16} />
                 <span>Favoritos</span>
               </button>
               <button type="button" className={`sidebar-nav-item ${activeSidebarSection === 'shared' ? 'sidebar-nav-item--active' : ''}`} onClick={() => openSidebarSection('shared')}>
-                <Users size={16} />
+                <GeometricIcon name="shared" size={16} />
                 <span>Compartilhados</span>
               </button>
             </nav>
@@ -1180,19 +1131,19 @@ function App() {
             </div>
             <nav className="sidebar-nav-list" aria-label="Biblioteca">
               <button type="button" className={`sidebar-nav-item ${activeSidebarSection === 'library' ? 'sidebar-nav-item--active' : ''}`} onClick={() => openSidebarSection('library')}>
-                <BookOpen size={16} />
+                <GeometricIcon name="library" size={16} />
                 <span>Biblioteca</span>
               </button>
               <button type="button" className={`sidebar-nav-item ${activeSidebarSection === 'templates' ? 'sidebar-nav-item--active' : ''}`} onClick={() => openSidebarSection('templates')}>
-                <LayoutTemplate size={16} />
+                <GeometricIcon name="templates" size={16} />
                 <span>Templates</span>
               </button>
               <button type="button" className={`sidebar-nav-item ${activeSidebarSection === 'examples' ? 'sidebar-nav-item--active' : ''}`} onClick={() => openSidebarSection('examples')}>
-                <Compass size={16} />
+                <GeometricIcon name="examples" size={16} />
                 <span>Exemplos</span>
               </button>
               <button type="button" className={`sidebar-nav-item ${activeSidebarSection === 'trash' ? 'sidebar-nav-item--active' : ''}`} onClick={() => openSidebarSection('trash')}>
-                <Trash2 size={16} />
+                <GeometricIcon name="trash" size={16} />
                 <span>Lixeira</span>
               </button>
             </nav>
@@ -1202,7 +1153,7 @@ function App() {
             <div className="workspace-sidebar__section-header">
               <span className="panel-kicker">PASTAS</span>
               <button type="button" className="sidebar-mini-action" onClick={createBoard} aria-label="Create board">
-                <Plus size={15} />
+                <GeometricIcon name="plus" size={15} />
               </button>
             </div>
             <div className="sidebar-board-list">
@@ -1214,7 +1165,7 @@ function App() {
                   onClick={() => openBoard(board.id)}
                 >
                   <div className="sidebar-board-card__glyph" aria-hidden="true">
-                    <Folder size={15} />
+                    <GeometricIcon name="folder" size={15} />
                   </div>
                   <div className="sidebar-board-card__copy">
                     <strong>{board.name}</strong>
@@ -1254,7 +1205,7 @@ function App() {
               aria-label="Open main menu"
               title="Main menu"
             >
-              <Menu size={18} />
+              <GeometricIcon name="menu" size={18} />
             </button>
             <button
               type="button"
@@ -1266,7 +1217,7 @@ function App() {
                 <span className="panel-kicker">Projeto atual</span>
                 <strong>{boardName}</strong>
               </div>
-              <ChevronDown size={16} />
+              <GeometricIcon name="chevron-down" size={16} />
             </button>
             <div className="history-cluster">
               <button
@@ -1277,7 +1228,7 @@ function App() {
                 title="Undo"
                 disabled={!canUndo}
               >
-                <Undo2 size={18} />
+                <GeometricIcon name="undo" size={18} />
               </button>
               <button
                 type="button"
@@ -1287,14 +1238,14 @@ function App() {
                 title="Redo"
                 disabled={!canRedo}
               >
-                <Redo2 size={18} />
+                <GeometricIcon name="redo" size={18} />
               </button>
             </div>
           </div>
 
           <div className="app-topbar__center">
             <div className="topbar-status">
-              <Cloud size={16} />
+              <GeometricIcon name="cloud" size={16} />
               <span>Sincronizado</span>
             </div>
             <div className="app-topbar__mobile-brand" aria-hidden="true">
@@ -1310,12 +1261,11 @@ function App() {
               aria-label="Share board"
               title="Share"
             >
-              <GeometricMotifIcon />
-              <Share2 size={18} />
+              <GeometricIcon name="geometry" size={18} framed />
               <span>Compartilhar</span>
             </button>
             <button type="button" className="profile-chip" aria-label="Workspace profile" title="Workspace profile">
-              <UserCircle2 size={18} />
+              <GeometricIcon name="profile" size={18} />
               <span>DS</span>
             </button>
           </div>
@@ -1336,21 +1286,21 @@ function App() {
                   <h2>Workspace</h2>
                 </div>
                 <button type="button" className="floating-icon-button" onClick={() => setMenuOpen(false)} aria-label="Close menu">
-                  <X size={16} />
+                  <GeometricIcon name="close" size={16} />
                 </button>
               </div>
 
               <div className="main-menu-panel__actions">
                 <button type="button" className="menu-action" onClick={createBoard}>
-                  <Plus size={16} />
+                  <GeometricIcon name="plus" size={16} />
                   <span>New board</span>
                 </button>
                 <button type="button" className="menu-action" onClick={renameBoard}>
-                  <Type size={16} />
+                  <GeometricIcon name="text" size={16} />
                   <span>Rename board</span>
                 </button>
                 <button type="button" className="menu-action menu-action--danger" onClick={clearBoard}>
-                  <Trash2 size={16} />
+                  <GeometricIcon name="trash" size={16} />
                   <span>Clear board</span>
                 </button>
               </div>
@@ -1367,7 +1317,7 @@ function App() {
                       <strong>{board.name}</strong>
                       <span>{board.id === activeBoardId ? 'Current board' : 'Open board'}</span>
                     </div>
-                    <ArrowRight size={16} />
+                    <GeometricIcon name="chevron-right" size={16} />
                   </button>
                 ))}
               </div>
@@ -1390,13 +1340,13 @@ function App() {
                   <h2>Board assets</h2>
                 </div>
                 <button type="button" className="floating-icon-button" onClick={() => setAssetsOpen(false)} aria-label="Close assets">
-                  <X size={16} />
+                  <GeometricIcon name="close" size={16} />
                 </button>
               </div>
 
               <div className="assets-panel__actions">
                 <button type="button" className="menu-action" onClick={() => void openPastePanel()}>
-                  <Copy size={16} />
+                  <GeometricIcon name="copy" size={16} />
                   <span>Paste content</span>
                 </button>
                 <button
@@ -1404,7 +1354,7 @@ function App() {
                   className="menu-action"
                   onClick={() => setMediaInteractionEnabled((enabled) => !enabled)}
                 >
-                  <ArrowUpRight size={16} />
+                  <GeometricIcon name="arrow" size={16} />
                   <span>{mediaInteractionEnabled ? 'Lock media' : 'Play media'}</span>
                 </button>
               </div>
@@ -1417,22 +1367,22 @@ function App() {
                         {asset.previewUrl ? (
                           <img src={asset.previewUrl} alt={asset.title} />
                         ) : asset.type === 'media' ? (
-                          <ArrowUpRight size={18} />
+                          <GeometricIcon name="arrow" size={18} />
                         ) : asset.type === 'bookmark' ? (
-                          <Link2 size={18} />
+                          <GeometricIcon name="link" size={18} />
                         ) : asset.type === 'note' ? (
-                          <StickyNote size={18} />
+                          <GeometricIcon name="note" size={18} />
                         ) : asset.type === 'text' ? (
-                          <Type size={18} />
+                          <GeometricIcon name="text" size={18} />
                         ) : (
-                          <Image size={18} />
+                          <GeometricIcon name="image" size={18} />
                         )}
                       </div>
                       <div className="asset-card__copy">
                         <strong>{asset.title}</strong>
                         <span>{asset.subtitle}</span>
                       </div>
-                      <ArrowRight size={14} />
+                      <GeometricIcon name="chevron-right" size={14} />
                     </button>
                   ))
                 ) : (
@@ -1462,7 +1412,7 @@ function App() {
                     <h2>Add content to the board</h2>
                   </div>
                   <button type="button" className="floating-icon-button" onClick={() => setPasteOpen(false)} aria-label="Close paste dialog">
-                    <X size={16} />
+                    <GeometricIcon name="close" size={16} />
                   </button>
                 </div>
 
@@ -1478,11 +1428,11 @@ function App() {
 
                 <div className="dialog-card__actions">
                   <button type="button" className="secondary-button" onClick={() => void pasteFromClipboard()}>
-                    <Copy size={16} />
+                    <GeometricIcon name="copy" size={16} />
                     <span>Use clipboard</span>
                   </button>
                   <button type="button" className="primary-button" onClick={saveManualPaste}>
-                    <ArrowRight size={16} />
+                    <GeometricIcon name="chevron-right" size={16} />
                     <span>Add to board</span>
                   </button>
                 </div>
@@ -1507,7 +1457,7 @@ function App() {
                     <h2>{boardDialog.mode === 'create' ? 'Create a new board' : 'Rename current board'}</h2>
                   </div>
                   <button type="button" className="floating-icon-button" onClick={() => setBoardDialog(null)} aria-label="Close board dialog">
-                    <X size={16} />
+                    <GeometricIcon name="close" size={16} />
                   </button>
                 </div>
 
@@ -1549,16 +1499,16 @@ function App() {
 
         <div className="canvas-quick-actions" aria-label="Ações rápidas do canvas">
           <button type="button" className="floating-icon-button" onClick={() => activateTool('hand')} aria-label="Mover canvas" title="Mover canvas">
-            <Hand size={16} />
+            <GeometricIcon name="hand" size={16} />
           </button>
           <button type="button" className="floating-icon-button" onClick={() => setStatusMessage('Os controles de distribuição entram no próximo passo.')} aria-label="Distribuição" title="Distribuição">
-            <AlignHorizontalJustifyCenter size={16} />
+            <GeometricIcon name="distribute" size={16} />
           </button>
           <button type="button" className="floating-icon-button" onClick={() => setStatusMessage('Os layouts rápidos entram no próximo passo.')} aria-label="Layouts" title="Layouts">
-            <LayoutTemplate size={16} />
+            <GeometricIcon name="layout" size={16} />
           </button>
           <button type="button" className="floating-icon-button" onClick={() => setStatusMessage('A grade modular entra no próximo passo.')} aria-label="Grade modular" title="Grade modular">
-            <Layers3 size={16} />
+            <GeometricIcon name="layers" size={16} />
           </button>
         </div>
 
@@ -1610,7 +1560,7 @@ function App() {
                 </h2>
               </div>
               <button type="button" className="sidebar-mini-action sidebar-mini-action--ghost properties-panel__collapse" aria-label="Recolher painel" title="Recolher painel">
-                <ChevronLeft size={15} />
+                <GeometricIcon name="chevron-left" size={15} />
               </button>
             </div>
 
@@ -1624,13 +1574,13 @@ function App() {
               <span>Ações</span>
               <div className="inline-actions">
                 <button type="button" className="secondary-icon-button" onClick={duplicateSelection} title="Duplicate" disabled={!hasSelection}>
-                  <CopyPlus size={16} />
+                  <GeometricIcon name="duplicate" size={16} />
                 </button>
                 <button type="button" className="secondary-icon-button" onClick={bringSelectionToFront} title="Bring to front" disabled={!hasSelection}>
-                  <BringToFront size={16} />
+                  <GeometricIcon name="front" size={16} />
                 </button>
                 <button type="button" className="secondary-icon-button secondary-icon-button--danger" onClick={deleteSelection} title="Delete" disabled={!hasSelection}>
-                  <Trash2 size={16} />
+                  <GeometricIcon name="trash" size={16} />
                 </button>
               </div>
             </div>
@@ -1643,7 +1593,7 @@ function App() {
                   className="secondary-button secondary-button--full"
                   onClick={() => setMediaInteractionEnabled((enabled) => !enabled)}
                 >
-                  <ArrowUpRight size={16} />
+                  <GeometricIcon name="arrow" size={16} />
                   <span>{mediaInteractionEnabled ? 'Bloquear mídia para editar' : 'Ativar reprodução e interação'}</span>
                 </button>
               </div>
@@ -1738,7 +1688,7 @@ function App() {
               <span>Camadas</span>
               <div className="inline-actions">
                 <button type="button" className="secondary-button secondary-button--full" onClick={bringSelectionToFront} disabled={!hasSelection}>
-                  <Layers3 size={16} />
+                  <GeometricIcon name="layers" size={16} />
                   <span>Trazer para frente</span>
                 </button>
               </div>
@@ -1752,7 +1702,7 @@ function App() {
                   className="secondary-button secondary-button--full"
                   onClick={() => setStatusMessage('As guias de alinhamento entram no próximo passo.')}
                 >
-                  <AlignHorizontalJustifyCenter size={16} />
+                  <GeometricIcon name="distribute" size={16} />
                   <span>Guias centrais</span>
                 </button>
               </div>
@@ -1779,7 +1729,7 @@ function App() {
             aria-label="Sticky notes"
             title="Sticky notes"
           >
-            <StickyNote size={18} />
+            <GeometricIcon name="note" size={18} />
             <span>Notas</span>
           </button>
           <button
@@ -1789,7 +1739,7 @@ function App() {
             aria-label="Image"
             title="Image"
           >
-            <Image size={18} />
+            <GeometricIcon name="image" size={18} />
             <span>Imagens</span>
           </button>
           <button
@@ -1806,13 +1756,13 @@ function App() {
 
         <div className="zoom-controls" aria-label="Zoom controls">
           <button type="button" className="floating-icon-button" onClick={zoomOut} aria-label="Zoom out">
-            <Minus size={16} />
+            <GeometricIcon name="minus" size={16} />
           </button>
           <button type="button" className="zoom-controls__level" onClick={zoomToFit} title="Zoom to fit">
             {Math.round(zoomLevel * 100)}%
           </button>
           <button type="button" className="floating-icon-button" onClick={zoomIn} aria-label="Zoom in">
-            <Plus size={16} />
+            <GeometricIcon name="plus" size={16} />
           </button>
         </div>
 
@@ -1822,7 +1772,7 @@ function App() {
           onClick={() => setMobileMinimapOpen((open) => !open)}
           aria-label="Toggle minimap"
         >
-          <Compass size={16} />
+          <GeometricIcon name="layout" size={16} />
           <span>Mapa</span>
         </button>
 
@@ -1834,7 +1784,7 @@ function App() {
                 <strong>{boardName}</strong>
               </div>
               <button type="button" className="sidebar-mini-action minimap-panel__close" onClick={() => setMobileMinimapOpen(false)} aria-label="Close minimap">
-                <X size={14} />
+                <GeometricIcon name="close" size={14} />
               </button>
             </div>
             <div className="minimap-panel__viewport">
@@ -1883,7 +1833,7 @@ function App() {
                   <strong>Escolha sua próxima ação</strong>
                 </div>
                 <button type="button" className="sidebar-mini-action" onClick={() => setMobileToolsOpen(false)} aria-label="Close tools">
-                  <X size={14} />
+                  <GeometricIcon name="close" size={14} />
                 </button>
               </div>
               <div className="mobile-toolbar" role="toolbar" aria-label="Mobile tools">
@@ -1898,11 +1848,11 @@ function App() {
                   />
                 ))}
                 <button type="button" className="tool-button tool-button--compact" onClick={addStickyNote} aria-label="Sticky notes">
-                  <StickyNote size={18} />
+                  <GeometricIcon name="note" size={18} />
                   <span>Notas</span>
                 </button>
                 <button type="button" className="tool-button tool-button--compact" onClick={addImagePrompt} aria-label="Image">
-                  <Image size={18} />
+                  <GeometricIcon name="image" size={18} />
                   <span>Imagens</span>
                 </button>
                 <button
@@ -1921,11 +1871,11 @@ function App() {
 
         <div className="mobile-bottom-nav" aria-label="Mobile navigation">
           <button type="button" className="mobile-bottom-nav__item" onClick={() => openSidebarSection('files')}>
-            <FolderKanban size={16} />
+            <GeometricIcon name="files" size={16} />
             <span>Arquivos</span>
           </button>
           <button type="button" className="mobile-bottom-nav__item" onClick={() => openSidebarSection('library')}>
-            <BookOpen size={16} />
+            <GeometricIcon name="library" size={16} />
             <span>Biblioteca</span>
           </button>
           <button
@@ -1937,11 +1887,11 @@ function App() {
               setMobileMinimapOpen(false)
             }}
           >
-            <Plus size={18} />
+            <GeometricIcon name="plus" size={18} />
             <span>+</span>
           </button>
           <button type="button" className="mobile-bottom-nav__item" onClick={() => openSidebarSection('shared')}>
-            <Share2 size={16} />
+            <GeometricIcon name="shared" size={16} />
             <span>Compart.</span>
           </button>
           <button
@@ -1956,7 +1906,7 @@ function App() {
               setMobileToolsOpen(false)
             }}
           >
-            <Layers3 size={16} />
+            <GeometricIcon name="layout" size={16} />
             <span>Ajustes</span>
           </button>
         </div>

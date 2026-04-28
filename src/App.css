@@ -76,6 +76,11 @@ img {
   max-width: 100%;
 }
 
+.geometric-icon {
+  overflow: visible;
+  vector-effect: non-scaling-stroke;
+}
+
 .whiteboard-app {
   position: relative;
   width: 100%;
@@ -343,6 +348,12 @@ img {
     opacity 0.18s ease;
 }
 
+.floating-icon-button,
+.secondary-icon-button,
+.sidebar-mini-action {
+  clip-path: polygon(18% 0, 82% 0, 100% 18%, 100% 82%, 82% 100%, 18% 100%, 0 82%, 0 18%);
+}
+
 .sidebar-mini-action--ghost {
   background: transparent;
   border-color: transparent;
@@ -409,6 +420,17 @@ img {
 .sidebar-nav-item svg,
 .sidebar-board-card__glyph {
   color: #6a7b95;
+}
+
+.sidebar-nav-item .geometric-icon,
+.board-selector .geometric-icon,
+.floating-icon-button .geometric-icon,
+.secondary-icon-button .geometric-icon,
+.profile-chip .geometric-icon,
+.tool-button .geometric-icon,
+.mobile-bottom-nav__item .geometric-icon,
+.topbar-status .geometric-icon {
+  flex-shrink: 0;
 }
 
 .sidebar-nav-item:hover,
@@ -743,7 +765,7 @@ img {
   padding-inline: 16px;
 }
 
-.floating-icon-button--label svg:first-child {
+.floating-icon-button--label .geometric-icon {
   color: var(--gold);
 }
 
@@ -1077,6 +1099,25 @@ img {
   cursor: pointer;
 }
 
+.secondary-icon-button,
+.floating-icon-button,
+.sidebar-mini-action {
+  position: relative;
+}
+
+.secondary-icon-button::after,
+.floating-icon-button::after,
+.sidebar-mini-action::after,
+.mobile-bottom-nav__item--primary::after {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border: 1px solid rgba(179, 141, 76, 0.1);
+  border-radius: inherit;
+  clip-path: polygon(18% 0, 82% 0, 100% 18%, 100% 82%, 82% 100%, 18% 100%, 0 82%, 0 18%);
+  pointer-events: none;
+}
+
 .secondary-button--full {
   width: 100%;
   justify-content: center;
@@ -1169,7 +1210,7 @@ img {
 .tool-button--accent::before {
   content: "";
   position: absolute;
-  inset: 6px;
+  inset: 5px;
   clip-path: polygon(20% 0, 80% 0, 100% 20%, 100% 80%, 80% 100%, 20% 100%, 0 80%, 0 20%);
   border: 1px solid rgba(179, 141, 76, 0.09);
   pointer-events: none;
@@ -1191,6 +1232,10 @@ img {
 
 .tool-button--compact span {
   font-size: 0.64rem;
+}
+
+.mobile-bottom-nav__item--primary {
+  clip-path: polygon(18% 0, 82% 0, 100% 18%, 100% 82%, 82% 100%, 18% 100%, 0 82%, 0 18%);
 }
 
 .zoom-controls {
