@@ -1133,7 +1133,11 @@ function App() {
     <div className={`whiteboard-app ${mediaInteractionEnabled ? 'media-live' : 'media-locked'}`}>
       <div className="canvas-shell">
         <div className="canvas-grid-layer" aria-hidden="true" />
-        <div className="ornament-corner ornament-corner--top-left" aria-hidden="true" />
+        <div className="ornament-corner ornament-corner--top-left" aria-hidden="true">
+          <div className="ornament-corner__motif">
+            <CanvasWatermarkMotif />
+          </div>
+        </div>
         <div className="ornament-corner ornament-corner--bottom-right" aria-hidden="true" />
 
         <aside className="workspace-sidebar">
