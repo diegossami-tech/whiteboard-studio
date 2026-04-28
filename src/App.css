@@ -227,7 +227,7 @@ img {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 14px;
+  gap: 12px;
 }
 
 .workspace-sidebar::before,
@@ -248,13 +248,13 @@ img {
 .workspace-brand {
   display: flex;
   align-items: center;
-  gap: 16px;
-  min-height: 58px;
+  gap: 12px;
+  min-height: 42px;
 }
 
 .workspace-brand__mark {
-  width: 42px;
-  height: 42px;
+  width: 32px;
+  height: 32px;
   display: grid;
   place-items: center;
   color: #d4af37;
@@ -262,15 +262,15 @@ img {
 }
 
 .workspace-brand__mark svg {
-  width: 42px;
-  height: 42px;
+  width: 32px;
+  height: 32px;
   display: block;
-  filter: drop-shadow(0 3px 8px rgba(212, 175, 55, 0.08));
+  filter: drop-shadow(0 2px 6px rgba(212, 175, 55, 0.08));
 }
 
 .workspace-brand__copy {
   display: grid;
-  gap: 6px;
+  gap: 5px;
   align-content: center;
   min-width: 0;
 }
@@ -285,19 +285,19 @@ img {
 }
 
 .workspace-brand__copy strong {
-  font-size: 1.08rem;
-  font-weight: 520;
+  font-size: 1.16rem;
+  font-weight: 530;
   letter-spacing: -0.028em;
-  line-height: 0.98;
+  line-height: 0.96;
   color: #0f1b2e;
   font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif;
 }
 
 .workspace-brand__subtle {
   color: #c78e2b;
-  font-size: 0.71rem;
+  font-size: 0.69rem;
   font-weight: 600;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.11em;
   text-transform: uppercase;
   line-height: 1;
   white-space: nowrap;
