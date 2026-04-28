@@ -491,48 +491,124 @@ function GeometricMotifIcon() {
         strokeLinejoin="round"
         vectorEffect="non-scaling-stroke"
       >
-        <rect x="7.2" y="7.2" width="8.6" height="8.6" rx="0.9" />
-        <rect x="24.2" y="7.2" width="8.6" height="8.6" rx="0.9" />
-        <rect x="7.2" y="24.2" width="8.6" height="8.6" rx="0.9" />
-        <rect x="24.2" y="24.2" width="8.6" height="8.6" rx="0.9" />
-
-        <path d="M20 4.8C24.9 9 25.1 15 20 20c-5.1-5-4.9-11 0-15.2Z" />
-        <path d="M35.2 20C31 24.9 25 25.1 20 20c5-5.1 11-4.9 15.2 0Z" />
-        <path d="M20 35.2C15.1 31 14.9 25 20 20c5.1 5 4.9 11 0 15.2Z" />
-        <path d="M4.8 20C9 15.1 15 14.9 20 20c-5 5.1-11 4.9-15.2 0Z" />
-
-        <path d="M11.4 11.4C16.4 11.4 19.2 14.1 20 20c-5.9-.8-8.6-3.6-8.6-8.6Z" />
-        <path d="M28.6 11.4C28.6 16.4 25.9 19.2 20 20c.8-5.9 3.6-8.6 8.6-8.6Z" />
-        <path d="M28.6 28.6C23.6 28.6 20.8 25.9 20 20c5.9.8 8.6 3.6 8.6 8.6Z" />
-        <path d="M11.4 28.6C11.4 23.6 14.1 20.8 20 20c-.8 5.9-3.6 8.6-8.6 8.6Z" />
-
-        <path d="M20 14.4 21.8 17.7 25.6 18.2 22.9 20.8 23.6 24.5 20 22.7 16.4 24.5 17.1 20.8 14.4 18.2 18.2 17.7Z" />
+        <MotifMiniPaths />
       </g>
     </svg>
+  )
+}
+
+function MotifMiniPaths() {
+  return (
+    <>
+      <rect x="7.2" y="7.2" width="8.6" height="8.6" rx="0.9" />
+      <rect x="24.2" y="7.2" width="8.6" height="8.6" rx="0.9" />
+      <rect x="7.2" y="24.2" width="8.6" height="8.6" rx="0.9" />
+      <rect x="24.2" y="24.2" width="8.6" height="8.6" rx="0.9" />
+
+      <path d="M20 4.8C24.9 9 25.1 15 20 20c-5.1-5-4.9-11 0-15.2Z" />
+      <path d="M35.2 20C31 24.9 25 25.1 20 20c5-5.1 11-4.9 15.2 0Z" />
+      <path d="M20 35.2C15.1 31 14.9 25 20 20c5.1 5 4.9 11 0 15.2Z" />
+      <path d="M4.8 20C9 15.1 15 14.9 20 20c-5 5.1-11 4.9-15.2 0Z" />
+
+      <path d="M11.4 11.4C16.4 11.4 19.2 14.1 20 20c-5.9-.8-8.6-3.6-8.6-8.6Z" />
+      <path d="M28.6 11.4C28.6 16.4 25.9 19.2 20 20c.8-5.9 3.6-8.6 8.6-8.6Z" />
+      <path d="M28.6 28.6C23.6 28.6 20.8 25.9 20 20c5.9.8 8.6 3.6 8.6 8.6Z" />
+      <path d="M11.4 28.6C11.4 23.6 14.1 20.8 20 20c-.8 5.9-3.6 8.6-8.6 8.6Z" />
+
+      <path d="M20 14.4 21.8 17.7 25.6 18.2 22.9 20.8 23.6 24.5 20 22.7 16.4 24.5 17.1 20.8 14.4 18.2 18.2 17.7Z" />
+    </>
+  )
+}
+
+function CanvasMotifFlowerPaths() {
+  return (
+    <>
+      <rect x="57.6" y="57.6" width="68.8" height="68.8" rx="7.2" />
+      <rect x="193.6" y="57.6" width="68.8" height="68.8" rx="7.2" />
+      <rect x="57.6" y="193.6" width="68.8" height="68.8" rx="7.2" />
+      <rect x="193.6" y="193.6" width="68.8" height="68.8" rx="7.2" />
+
+      <path d="M160 38.4C199.2 72 200.8 120 160 160c-40.8-40-39.2-88 0-121.6Z" />
+      <path d="M281.6 160C248 199.2 200 200.8 160 160c40-40.8 88-39.2 121.6 0Z" />
+      <path d="M160 281.6C120.8 248 119.2 200 160 160c40.8 40 39.2 88 0 121.6Z" />
+      <path d="M38.4 160C72 120.8 120 119.2 160 160c-40 40.8-88 39.2-121.6 0Z" />
+
+      <path d="M91.2 91.2C131.2 91.2 153.6 112.8 160 160c-47.2-6.4-68.8-28.8-68.8-68.8Z" />
+      <path d="M228.8 91.2C228.8 131.2 207.2 153.6 160 160c6.4-47.2 28.8-68.8 68.8-68.8Z" />
+      <path d="M228.8 228.8C188.8 228.8 166.4 207.2 160 160c47.2 6.4 68.8 28.8 68.8 68.8Z" />
+      <path d="M91.2 228.8C91.2 188.8 112.8 166.4 160 160c-6.4 47.2-28.8 68.8-68.8 68.8Z" />
+
+      <path d="M160 115.2 174.4 141.6 204.8 145.6 183.2 166.4 188.8 196 160 181.6 131.2 196 136.8 166.4 115.2 145.6 145.6 141.6Z" />
+    </>
   )
 }
 
 function CanvasWatermarkMotif() {
   return (
     <svg viewBox="0 0 320 320" fill="none" aria-hidden="true">
-      <g opacity="0.16" stroke="currentColor" strokeWidth="1.08" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M160 32v256" />
-        <path d="M32 160h256" />
-        <path d="M70 70l180 180" />
-        <path d="M250 70 70 250" />
-        <rect x="92" y="92" width="136" height="136" rx="0" />
-        <rect x="112" y="112" width="96" height="96" rx="0" transform="rotate(45 160 160)" />
-        <circle cx="160" cy="160" r="72" />
-        <circle cx="160" cy="160" r="104" />
+      <g opacity="0.14" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M160 34v252" />
+        <path d="M34 160h252" />
+        <path d="M74 74 246 246" />
+        <path d="M246 74 74 246" />
+        <rect x="72" y="72" width="176" height="176" rx="0" />
+        <rect x="96" y="96" width="128" height="128" rx="0" transform="rotate(45 160 160)" />
+        <circle cx="160" cy="160" r="88" />
+        <circle cx="160" cy="160" r="58" />
       </g>
-      <g opacity="0.9" stroke="currentColor" strokeWidth="1.55" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M160 58c14 34 40 60 74 74-34 14-60 40-74 74-14-34-40-60-74-74 34-14 60-40 74-74Z" />
-        <path d="M160 58c-26 22-39 58-36 102 44 3 80-10 102-36-26-22-39-58-36-102-44-3-80 10-102 36Z" />
-        <path d="M160 58c26 22 39 58 36 102-44 3-80-10-102-36 26-22 39-58 36-102 44-3 80 10 102 36Z" />
-        <path d="M262 160c-22-26-58-39-102-36-3 44 10 80 36 102 22-26 58-39 102-36 3-44-10-80-36-102Z" />
-        <path d="M58 160c22-26 58-39 102-36 3 44-10 80-36 102-22-26-58-39-102-36-3-44 10-80 36-102Z" />
-        <path d="M160 118c9 18 24 33 42 42-18 9-33 24-42 42-9-18-24-33-42-42 18-9 33-24 42-42Z" />
-        <path d="M160 136 168.5 151.5 186 154.5 173 167 176.5 184 160 175.7 143.5 184 147 167 134 154.5 151.5 151.5Z" />
+      <g opacity="0.92" stroke="currentColor" strokeWidth="1.46" strokeLinecap="round" strokeLinejoin="round">
+        <CanvasMotifFlowerPaths />
+      </g>
+    </svg>
+  )
+}
+
+function CanvasCornerOrnament({ variant }: { variant: 'top-left' | 'bottom-right' }) {
+  const id = variant === 'top-left' ? 'canvas-corner-top-left' : 'canvas-corner-bottom-right'
+
+  const motifs =
+    variant === 'top-left'
+      ? [
+          { x: 48, y: 54, scale: 0.9, opacity: 0.82 },
+          { x: 92, y: 86, scale: 0.78, opacity: 0.64 },
+          { x: 24, y: 108, scale: 0.62, opacity: 0.5 },
+          { x: 126, y: 124, scale: 0.52, opacity: 0.44 },
+          { x: 74, y: 138, scale: 0.46, opacity: 0.38 },
+        ]
+      : [
+          { x: 312, y: 34, scale: 1.04, opacity: 0.72 },
+          { x: 278, y: 74, scale: 0.9, opacity: 0.64 },
+          { x: 244, y: 108, scale: 0.8, opacity: 0.58 },
+          { x: 210, y: 142, scale: 0.72, opacity: 0.52 },
+          { x: 176, y: 174, scale: 0.66, opacity: 0.48 },
+          { x: 146, y: 206, scale: 0.58, opacity: 0.44 },
+          { x: 118, y: 230, scale: 0.5, opacity: 0.38 },
+          { x: 90, y: 252, scale: 0.42, opacity: 0.34 },
+        ]
+
+  return (
+    <svg
+      className={`ornament-corner__svg ornament-corner__svg--${variant}`}
+      viewBox={variant === 'top-left' ? '0 0 170 170' : '0 0 360 280'}
+      fill="none"
+      aria-hidden="true"
+    >
+      <defs>
+        <clipPath id={id}>
+          {variant === 'top-left' ? <path d="M0 0H170V132C122 133 87 147 48 170H0Z" /> : <path d="M360 0V280H0C70 278 108 236 144 196C178 156 212 112 250 74C286 38 316 16 360 0Z" />}
+        </clipPath>
+      </defs>
+      <g clipPath={`url(#${id})`} stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+        {motifs.map((motif, index) => (
+          <g
+            key={`${variant}-${index}`}
+            transform={`translate(${motif.x} ${motif.y}) scale(${motif.scale}) translate(-20 -20)`}
+            opacity={motif.opacity}
+            strokeWidth={1.02}
+          >
+            <MotifMiniPaths />
+          </g>
+        ))}
       </g>
     </svg>
   )
@@ -1134,11 +1210,11 @@ function App() {
       <div className="canvas-shell">
         <div className="canvas-grid-layer" aria-hidden="true" />
         <div className="ornament-corner ornament-corner--top-left" aria-hidden="true">
-          <div className="ornament-corner__motif">
-            <CanvasWatermarkMotif />
-          </div>
+          <CanvasCornerOrnament variant="top-left" />
         </div>
-        <div className="ornament-corner ornament-corner--bottom-right" aria-hidden="true" />
+        <div className="ornament-corner ornament-corner--bottom-right" aria-hidden="true">
+          <CanvasCornerOrnament variant="bottom-right" />
+        </div>
 
         <aside className="workspace-sidebar">
           <div className="workspace-sidebar__header">
