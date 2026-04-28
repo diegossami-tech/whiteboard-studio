@@ -1254,24 +1254,24 @@ function App() {
             </nav>
           </section>
 
-          <section className="workspace-sidebar__section">
-            <div className="workspace-sidebar__section-header workspace-sidebar__section-header--plain">
-              <span className="panel-kicker">BIBLIOTECA</span>
-            </div>
-            <nav className="sidebar-nav-list" aria-label="Biblioteca">
-              <button type="button" className={`sidebar-nav-item ${activeSidebarSection === 'library' ? 'sidebar-nav-item--active' : ''}`} onClick={() => openSidebarSection('library')}>
-                <GeometricIcon name="library" size={16} />
-                <span>Biblioteca</span>
-              </button>
-              <button type="button" className={`sidebar-nav-item ${activeSidebarSection === 'templates' ? 'sidebar-nav-item--active' : ''}`} onClick={() => openSidebarSection('templates')}>
-                <GeometricIcon name="templates" size={16} />
-                <span>Templates</span>
-              </button>
-              <button type="button" className={`sidebar-nav-item ${activeSidebarSection === 'trash' ? 'sidebar-nav-item--active' : ''}`} onClick={() => openSidebarSection('trash')}>
-                <GeometricIcon name="trash" size={16} />
-                <span>Lixeira</span>
-              </button>
-            </nav>
+            <section className="workspace-sidebar__section">
+              <div className="workspace-sidebar__section-header workspace-sidebar__section-header--plain">
+                <span className="panel-kicker">BIBLIOTECA</span>
+              </div>
+              <nav className="sidebar-nav-list" aria-label="Biblioteca">
+                <button type="button" className={`sidebar-nav-item ${activeSidebarSection === 'templates' ? 'sidebar-nav-item--active' : ''}`} onClick={() => openSidebarSection('templates')}>
+                  <GeometricIcon name="templates" size={16} />
+                  <span>Templates</span>
+                </button>
+                <button type="button" className={`sidebar-nav-item ${activeSidebarSection === 'library' ? 'sidebar-nav-item--active' : ''}`} onClick={() => openSidebarSection('library')}>
+                  <GeometricIcon name="library" size={16} />
+                  <span>Exemplos</span>
+                </button>
+                <button type="button" className={`sidebar-nav-item ${activeSidebarSection === 'trash' ? 'sidebar-nav-item--active' : ''}`} onClick={() => openSidebarSection('trash')}>
+                  <GeometricIcon name="trash" size={16} />
+                  <span>Lixeira</span>
+                </button>
+              </nav>
           </section>
 
           <section className="workspace-sidebar__section workspace-sidebar__section--boards">
@@ -1288,33 +1288,40 @@ function App() {
                   type="button"
                   className={`sidebar-board-card ${folderName === 'Projetos' ? 'sidebar-board-card--active' : ''}`}
                   onClick={() => setStatusMessage(`A pasta ${folderName} entra no próximo passo.`)}
-                >
-                  <div className="sidebar-board-card__glyph" aria-hidden="true">
-                    <GeometricIcon name="folder" size={15} />
-                  </div>
-                  <div className="sidebar-board-card__copy">
-                    <strong>{folderName}</strong>
-                    <span>{folderName === 'Projetos' ? 'Aberta agora' : 'Abrir pasta'}</span>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </section>
+                  >
+                    <div className="sidebar-board-card__glyph" aria-hidden="true">
+                      <GeometricIcon name="folder" size={15} />
+                    </div>
+                    <div className="sidebar-board-card__copy">
+                      <strong>{folderName}</strong>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </section>
 
-          <div className="upgrade-card">
-            <div className="upgrade-card__icon" aria-hidden="true">
-              <GeometricMotifIcon />
+            <div className="upgrade-card">
+              <div className="upgrade-card__icon" aria-hidden="true">
+                <GeometricMotifIcon />
+              </div>
+              <div className="upgrade-card__copy">
+                <strong>Plano Pro</strong>
+                <span>Recursos avançados para organizar suas ideias.</span>
+              </div>
+              <button type="button" className="upgrade-card__button" onClick={() => setStatusMessage('O fluxo de upgrade entra no próximo passo.')}>
+                <GeometricIcon name="favorites" size={15} />
+                <span>Upgrade</span>
+              </button>
             </div>
-            <div className="upgrade-card__copy">
-              <strong>Plano Pro</strong>
-              <span>Recursos avançados para organizar suas ideias.</span>
-            </div>
-            <button type="button" className="upgrade-card__button" onClick={() => setStatusMessage('O fluxo de upgrade entra no próximo passo.')}>
-              <GeometricIcon name="geometry" size={15} framed />
-              <span>Upgrade</span>
+
+            <button type="button" className="sidebar-footer-shortcut" aria-label="Recolher sidebar" title="Recolher sidebar">
+              <span className="sidebar-footer-shortcut__left">
+                <GeometricIcon name="chevron-left" size={14} />
+                <span>Recolher sidebar</span>
+              </span>
+              <span className="sidebar-footer-shortcut__hint">Alt + B</span>
             </button>
-          </div>
-        </aside>
+          </aside>
 
         <header className="app-topbar">
           <div className="app-topbar__left">
