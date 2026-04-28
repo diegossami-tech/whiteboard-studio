@@ -1,20 +1,28 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
+  ArrowRight,
+  BookOpen,
   BringToFront,
+  ChevronsRight,
   Copy,
   Crop,
   FolderPlus,
+  Image,
   LayoutDashboard,
+  Link2,
+  Menu,
   MessageSquareText,
   Move,
   Minus,
   PenTool,
   RectangleVertical,
+  Sparkles,
   Plus,
   Search,
   StickyNote,
   Type,
   Pencil,
+  X,
 } from 'lucide-react'
 import {
   Tldraw,
@@ -59,6 +67,7 @@ type SavedItemSummary = {
   previewUrl?: string
 }
 type WorkspaceView = 'library' | 'edit'
+type FolderDialogState = { mode: 'create' | 'rename'; pageId?: TLPageId }
 
 const PORTRAIT_NAME_PREFIX = 'Retrato '
 const PORTRAIT_WIDTH = 420
@@ -795,6 +804,9 @@ function App() {
   const [createMenuOpen, setCreateMenuOpen] = useState(false)
   const [manualPasteOpen, setManualPasteOpen] = useState(false)
   const [manualPasteValue, setManualPasteValue] = useState('')
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
+  const [folderDialog, setFolderDialog] = useState<FolderDialogState | null>(null)
+  const [folderDraft, setFolderDraft] = useState('')
   const [sidebarDropActive, setSidebarDropActive] = useState(false)
   const [sidebarDropFolderId, setSidebarDropFolderId] = useState<TLPageId | null>(null)
   const [lastSavedItemId, setLastSavedItemId] = useState<TLShapeId | null>(null)
@@ -1221,6 +1233,7 @@ function App() {
       editor.setCurrentPage(pageId)
       setLastSavedItemId(null)
       setWorkspaceView('library')
+      setMobileSidebarOpen(false)
       syncFolders(editor)
       syncPortraits(editor)
       setStatusMessage('Pasta aberta no quadro.')
@@ -1255,28 +1268,13 @@ function App() {
   )
 
   const createFolder = useCallback(() => {
-    if (!editor) return
-
     const folderIndex = folderCounterRef.current
     const defaultName = `Pasta ${folderIndex}`
-    const folderName = window.prompt('Nome da pasta', defaultName)?.trim()
-
-    if (!folderName) {
-      setStatusMessage('Criacao de pasta cancelada.')
-      return
-    }
-
-    folderCounterRef.current += 1
-
-    const pageId = PageRecordType.createId()
-    editor.createPage({ id: pageId, name: folderName })
-    editor.setCurrentPage(pageId)
-    setLastSavedItemId(null)
-    setWorkspaceView('library')
-    syncFolders(editor)
-    syncPortraits(editor)
-    setStatusMessage(`${folderName} criada na lateral esquerda.`)
-  }, [editor, syncFolders, syncPortraits])
+    setFolderDraft(defaultName)
+    setCreateMenuOpen(false)
+    setManualPasteOpen(false)
+    setFolderDialog({ mode: 'create' })
+  }, [])
 
   const renameFolder = useCallback(
     (pageId?: TLPageId) => {
@@ -1288,15 +1286,49 @@ function App() {
       const folder = editor.getPage(targetPageId)
       if (!folder) return
 
-      const nextName = window.prompt('Novo nome da pasta', folder.name)?.trim()
-      if (!nextName || nextName === folder.name) return
-
-      editor.renamePage(targetPageId, nextName)
-      syncFolders(editor)
-      setStatusMessage(`Pasta renomeada para "${nextName}".`)
+      setFolderDraft(folder.name)
+      setCreateMenuOpen(false)
+      setManualPasteOpen(false)
+      setFolderDialog({ mode: 'rename', pageId: targetPageId })
     },
     [activeFolderId, editor, syncFolders]
   )
+
+  const submitFolderDialog = useCallback(() => {
+    if (!editor || !folderDialog) return
+
+    const nextName = folderDraft.trim()
+    if (!nextName) {
+      setStatusMessage('Escolha um nome para a pasta.')
+      return
+    }
+
+    if (folderDialog.mode === 'create') {
+      folderCounterRef.current += 1
+      const pageId = PageRecordType.createId()
+      editor.createPage({ id: pageId, name: nextName })
+      editor.setCurrentPage(pageId)
+      setLastSavedItemId(null)
+      setWorkspaceView('library')
+      setMobileSidebarOpen(false)
+      syncFolders(editor)
+      syncPortraits(editor)
+      setStatusMessage(`${nextName} criada na lateral esquerda.`)
+    } else {
+      const pageId = folderDialog.pageId
+      if (!pageId) return
+      const folder = editor.getPage(pageId)
+      if (!folder) return
+      if (folder.name !== nextName) {
+        editor.renamePage(pageId, nextName)
+        syncFolders(editor)
+        setStatusMessage(`Pasta renomeada para "${nextName}".`)
+      }
+    }
+
+    setFolderDialog(null)
+    setFolderDraft('')
+  }, [editor, folderDialog, folderDraft, syncFolders, syncPortraits])
 
   const renameSavedItem = useCallback(
     (item: SavedItemSummary | null) => {
@@ -1584,23 +1616,67 @@ function App() {
     const shape = editor.getShape(selectedShapeId)
     return shape?.type === 'image' && editor.canCropShape(shape) ? shape.id : null
   }, [editor, measurementOverlay])
+  const savedMediaCount = useMemo(
+    () => savedItems.filter((item) => item.type === 'media' || item.type === 'bookmark').length,
+    [savedItems]
+  )
+  const savedTextCount = useMemo(
+    () => savedItems.filter((item) => item.type === 'note' || item.type === 'text').length,
+    [savedItems]
+  )
+  const savedImageCount = useMemo(
+    () => savedItems.filter((item) => item.type === 'image').length,
+    [savedItems]
+  )
+  const latestSavedItem = useMemo(
+    () => savedItems.find((item) => item.id === lastSavedItemId) ?? savedItems[0] ?? null,
+    [lastSavedItemId, savedItems]
+  )
 
   return (
     <div className="app-shell accent-teal">
-      <aside className="left-rail">
+      {mobileSidebarOpen && (
+        <button
+          type="button"
+          className="mobile-sidebar-scrim"
+          aria-label="Fechar menu lateral"
+          onClick={() => setMobileSidebarOpen(false)}
+        />
+      )}
+
+      <aside className={`left-rail ${mobileSidebarOpen ? 'left-rail--open' : ''}`}>
         <div className="left-rail-top">
-          <div className="brand-lockup">
+          <div className="brand-lockup brand-lockup--premium">
             <div className="brand-mark">BV</div>
-            <div>
+            <div className="brand-lockup__copy">
+              <span className="brand-lockup__eyebrow">Premium capture library</span>
               <strong>Biblioteca Visual</strong>
-              <span>Guarde prints, links, reels, shorts e textos em pastas simples</span>
+              <span>Save prints, links, reels, shorts and notes in a clean, premium workspace.</span>
+            </div>
+            <button
+              type="button"
+              className="left-rail__close"
+              aria-label="Fechar menu"
+              onClick={() => setMobileSidebarOpen(false)}
+            >
+              <X size={18} />
+            </button>
+          </div>
+
+          <div className="sidebar-hero-card">
+            <div className="sidebar-hero-card__icon">
+              <Sparkles size={18} />
+            </div>
+            <div>
+              <strong>Design-first vault</strong>
+              <p>Built to collect references fast, browse beautifully, and edit only when needed.</p>
             </div>
           </div>
 
           <div className="library-shortcuts" aria-label="Acoes rapidas">
             <button
               type="button"
-              className="library-action"
+              className="library-action library-action--primary"
               onClick={createFolder}
               aria-label="Nova pasta"
               title="Nova pasta"
@@ -1609,9 +1685,10 @@ function App() {
                 <FolderPlus size={18} />
               </span>
               <span className="library-action__copy">
-                <strong>Nova pasta</strong>
-                <span>Organize prints, links e notas</span>
+                <strong>New folder</strong>
+                <span>Create a fresh collection for a new project, client, or moodboard.</span>
               </span>
+              <ArrowRight size={16} className="library-action__arrow" />
             </button>
           </div>
 
@@ -1622,20 +1699,23 @@ function App() {
                 type="text"
                 value={libraryQuery}
                 onChange={(event) => setLibraryQuery(event.target.value)}
-                placeholder="Buscar pastas, prints, links e notas"
+                placeholder="Search folders, saved references and notes"
                 aria-label="Buscar na biblioteca"
               />
             </label>
             {libraryQuery && (
               <button type="button" className="library-search__clear" onClick={() => setLibraryQuery('')}>
-                Limpar
+                Clear
               </button>
             )}
           </section>
 
           <section className="folder-stack" aria-label="Pastas do quadro">
             <div className="folder-stack__header">
-              <strong>Pastas</strong>
+              <div>
+                <span className="section-kicker">Collections</span>
+                <strong>Folders</strong>
+              </div>
               <span>{filteredFolders.length}</span>
             </div>
 
@@ -1658,74 +1738,115 @@ function App() {
                       <span className="folder-item__name">{folder.name}</span>
                       <span className="folder-item__meta">
                         {folder.id === activeFolderId
-                          ? 'Pasta aberta'
+                          ? `${savedItems.length} items in view`
                           : folder.id === sidebarDropFolderId
-                            ? 'Solte aqui'
-                            : 'Abra ou arraste itens'}
+                            ? 'Drop here to organize'
+                            : 'Open collection'}
                       </span>
                     </span>
                   </button>
+                  <button
+                    type="button"
+                    className="folder-item__send"
+                    aria-label={`Renomear ${folder.name}`}
+                    onClick={() => renameFolder(folder.id)}
+                  >
+                    <Pencil size={14} />
+                  </button>
                 </div>
               ))}
-              {!filteredFolders.length && <div className="folder-list__empty">Nenhuma pasta bate com a busca.</div>}
+              {!filteredFolders.length && <div className="folder-list__empty">No folders match that search.</div>}
             </div>
           </section>
-
         </div>
 
         <div className="left-footer">
-          <span>{activeFolder?.name ?? 'Biblioteca atual'}</span>
-          <strong>{savedItems.length} itens salvos</strong>
+          <span>{folders.length} collections</span>
+          <strong>{savedItems.length} saved assets</strong>
         </div>
       </aside>
 
       <main className="workspace">
-        <section
-          className={`canvas-shell pattern-dots ${
-            mediaInteractionEnabled ? 'media-live' : 'media-locked'
-          } ${workspaceView === 'library' ? 'canvas-shell--library' : 'canvas-shell--edit'}`}
-        >
-          <div className="canvas-toolbar">
-            <div className="canvas-toolbar__group">
-              <div className="canvas-toolbar__menu-wrap">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setManualPasteOpen(false)
-                    setCreateMenuOpen((value) => !value)
-                  }}
-                >
-                  <Plus size={16} />
-                  <span>Novo</span>
-                </button>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  void openManualPastePanel()
-                }}
-                title="Use Ctrl+V ou Cmd+V para colar"
-              >
-                <Copy size={16} />
-                <span>Colar</span>
-              </button>
-            </div>
+        <header className="workspace-header">
+          <div className="workspace-header__leading">
+            <button
+              type="button"
+              className="workspace-header__menu-button"
+              aria-label="Abrir menu lateral"
+              onClick={() => setMobileSidebarOpen(true)}
+            >
+              <Menu size={18} />
+            </button>
 
-            <div className="canvas-toolbar__group canvas-toolbar__group--primary">
-              <button type="button" onClick={() => setWorkspaceView((view) => (view === 'library' ? 'edit' : 'library'))}>
-                {workspaceView === 'library' ? <PenTool size={16} /> : <LayoutDashboard size={16} />}
-                <span>{workspaceView === 'library' ? 'Editar' : 'Biblioteca'}</span>
-              </button>
+            <div className="workspace-header__intro">
+              <span className="workspace-header__eyebrow">
+                {workspaceView === 'library' ? 'Library view' : 'Canvas edit mode'}
+              </span>
+              <div className="workspace-header__title-row">
+                <h1>{activeFolder?.name ?? 'Biblioteca Visual'}</h1>
+                <span className="workspace-header__badge">
+                  {workspaceView === 'library' ? 'Browse' : 'Edit'}
+                </span>
+              </div>
+              <p>
+                {workspaceView === 'library'
+                  ? 'A premium reference library for visual inspiration, saved text, and fast retrieval.'
+                  : 'Edit your collection on the infinite canvas, crop assets, and fine-tune composition.'}
+              </p>
             </div>
           </div>
 
+          <div className="workspace-header__actions">
+            <button
+              type="button"
+              className="workspace-header__ghost"
+              onClick={() => renameFolder()}
+            >
+              <Pencil size={16} />
+              <span>Rename</span>
+            </button>
+            <button
+              type="button"
+              className="workspace-header__secondary"
+              onClick={() => void openManualPastePanel()}
+            >
+              <Copy size={16} />
+              <span>Paste</span>
+            </button>
+            <button
+              type="button"
+              className="workspace-header__primary"
+              onClick={() => {
+                setManualPasteOpen(false)
+                setCreateMenuOpen(true)
+              }}
+            >
+              <Plus size={16} />
+              <span>New</span>
+            </button>
+            <button
+              type="button"
+              className="workspace-header__mode"
+              onClick={() => setWorkspaceView((view) => (view === 'library' ? 'edit' : 'library'))}
+            >
+              {workspaceView === 'library' ? <PenTool size={16} /> : <LayoutDashboard size={16} />}
+              <span>{workspaceView === 'library' ? 'Edit canvas' : 'Back to library'}</span>
+            </button>
+          </div>
+        </header>
+
+        <section
+          className={`workspace-shell ${
+            mediaInteractionEnabled ? 'media-live' : 'media-locked'
+          } ${workspaceView === 'library' ? 'workspace-shell--library' : 'workspace-shell--edit'}`}
+        >
           {createMenuOpen && (
             <div className="quick-panel" role="dialog" aria-modal="true" aria-label="Criar novo item">
               <div className="quick-panel__card">
                 <div className="quick-panel__copy">
-                  <span className="quick-panel__eyebrow">Criar</span>
-                  <h2>O que voce quer adicionar?</h2>
-                  <p>Escolha um formato simples para guardar a informacao nesta pasta.</p>
+                  <span className="quick-panel__eyebrow">Create</span>
+                  <h2>What would you like to add?</h2>
+                  <p>Choose the right object for what you’re collecting so the library stays elegant and fast.</p>
                 </div>
                 <div className="quick-panel__grid">
                   <button
@@ -1737,8 +1858,8 @@ function App() {
                     }}
                   >
                     <StickyNote size={18} />
-                    <strong>Nova nota</strong>
-                    <span>Boa para conteudo mais longo</span>
+                    <strong>Note</strong>
+                    <span>For longer thoughts, summaries, and captured ideas.</span>
                   </button>
                   <button
                     type="button"
@@ -1749,8 +1870,8 @@ function App() {
                     }}
                   >
                     <MessageSquareText size={18} />
-                    <strong>Novo texto</strong>
-                    <span>Uma linha ou bloco curto</span>
+                    <strong>Text</strong>
+                    <span>For a short line, quote, or compact snippet.</span>
                   </button>
                   <button
                     type="button"
@@ -1761,23 +1882,25 @@ function App() {
                     }}
                   >
                     <Type size={18} />
-                    <strong>Novo titulo</strong>
-                    <span>Para destacar uma secao</span>
+                    <strong>Title</strong>
+                    <span>For naming sections, themes, or presentation beats.</span>
                   </button>
-                  {workspaceView === 'edit' && (
-                    <button
-                      type="button"
-                      className="quick-panel__action"
-                      onClick={() => {
-                        setCreateMenuOpen(false)
-                        createPortrait()
-                      }}
-                    >
-                      <RectangleVertical size={18} />
-                      <strong>Novo retrato</strong>
-                      <span>Area vertical para organizar midia</span>
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    className="quick-panel__action"
+                    onClick={() => {
+                      setCreateMenuOpen(false)
+                      workspaceView === 'edit' ? createPortrait() : setWorkspaceView('edit')
+                    }}
+                  >
+                    <RectangleVertical size={18} />
+                    <strong>{workspaceView === 'edit' ? 'Portrait frame' : 'Open canvas'}</strong>
+                    <span>
+                      {workspaceView === 'edit'
+                        ? 'Create a vertical layout frame for visual storytelling.'
+                        : 'Switch to the infinite canvas to arrange content freely.'}
+                    </span>
+                  </button>
                 </div>
                 <div className="quick-panel__footer">
                   <button
@@ -1785,7 +1908,7 @@ function App() {
                     className="quick-panel__secondary"
                     onClick={() => setCreateMenuOpen(false)}
                   >
-                    Fechar
+                    Close
                   </button>
                 </div>
               </div>
@@ -1796,21 +1919,19 @@ function App() {
             <div className="manual-paste-modal" role="dialog" aria-modal="true" aria-label="Colar texto manualmente">
               <div className="manual-paste-modal__card">
                 <div className="manual-paste-modal__copy">
-                  <span className="manual-paste-modal__eyebrow">Colar texto</span>
-                  <h2>Cole sua nota ou texto aqui</h2>
-                  <p>
-                    Se o navegador bloquear o clipboard, voce ainda pode colar manualmente e salvar nesta pasta.
-                  </p>
+                  <span className="manual-paste-modal__eyebrow">Paste capture</span>
+                  <h2>Bring something into this collection</h2>
+                  <p>Paste text manually, or try reading the clipboard if your browser allows it.</p>
                 </div>
                 <textarea
                   value={manualPasteValue}
                   onChange={(event) => setManualPasteValue(event.target.value)}
-                  placeholder="Cole aqui seu texto, anotacao ou bloco maior de conteudo"
+                  placeholder="Paste text, a note, a short description, or a reference title"
                   autoFocus
                 />
                 <div className="manual-paste-modal__actions">
                   <button type="button" onClick={() => void pasteFromClipboard()}>
-                    Usar clipboard
+                    Use clipboard
                   </button>
                   <button
                     type="button"
@@ -1820,272 +1941,488 @@ function App() {
                       setManualPasteValue('')
                     }}
                   >
-                    Cancelar
+                    Cancel
                   </button>
                   <button type="button" onClick={saveManualPastedText}>
-                    Salvar
+                    Save to folder
                   </button>
                 </div>
               </div>
             </div>
           )}
 
-          {workspaceView === 'library' && (
-            <div className="library-stage">
-              <div className="library-stage__header">
-                <div className="library-stage__copy">
-                  <span className="library-stage__eyebrow">Biblioteca da pasta</span>
-                  <h1>{activeFolder?.name ?? 'Biblioteca visual'}</h1>
+          {folderDialog && (
+            <div className="folder-dialog" role="dialog" aria-modal="true" aria-label="Folder form">
+              <div className="folder-dialog__card">
+                <div className="folder-dialog__copy">
+                  <span className="folder-dialog__eyebrow">
+                    {folderDialog.mode === 'create' ? 'New collection' : 'Rename collection'}
+                  </span>
+                  <h2>
+                    {folderDialog.mode === 'create'
+                      ? 'Create a fresh space for your references'
+                      : 'Give this collection a clearer name'}
+                  </h2>
                   <p>
-                    Visualize o que foi guardado nesta pasta. Abra no canvas so quando quiser editar, recortar ou reorganizar.
+                    {folderDialog.mode === 'create'
+                      ? 'Use folders to separate clients, research themes, campaigns, or personal inspiration.'
+                      : 'A stronger label makes your archive easier to scan later.'}
                   </p>
                 </div>
-                <div className="library-stage__actions">
-                  <button type="button" onClick={() => renameFolder()}>
-                    <Pencil size={16} />
-                    <span>Renomear pasta</span>
+                <label className="folder-dialog__field">
+                  <span>Collection name</span>
+                  <input
+                    type="text"
+                    value={folderDraft}
+                    onChange={(event) => setFolderDraft(event.target.value)}
+                    placeholder="Type a folder name"
+                    autoFocus
+                  />
+                </label>
+                <div className="folder-dialog__actions">
+                  <button
+                    type="button"
+                    className="folder-dialog__secondary"
+                    onClick={() => {
+                      setFolderDialog(null)
+                      setFolderDraft('')
+                    }}
+                  >
+                    Cancel
                   </button>
-                  <button type="button" onClick={() => setWorkspaceView('edit')}>
-                    <PenTool size={16} />
-                    <span>Editar canvas</span>
+                  <button type="button" onClick={submitFolderDialog}>
+                    {folderDialog.mode === 'create' ? 'Create folder' : 'Save name'}
                   </button>
                 </div>
               </div>
+            </div>
+          )}
 
-              {filteredSavedItems.length ? (
-                <div className="library-stage__grid">
-                  {filteredSavedItems.map((item) => (
-                    <article
-                      key={`gallery-${item.id}`}
-                      className={`gallery-card gallery-card--${item.type} ${
-                        item.id === lastSavedItemId ? 'gallery-card--fresh' : ''
-                      }`}
+          {workspaceView === 'library' ? (
+            <div className="library-stage">
+              <section className="hero-panel">
+                <div className="hero-panel__copy">
+                  <span className="section-kicker">World-class visual capture</span>
+                  <h2>Everything you collect stays elegant, searchable, and ready to present.</h2>
+                  <p>
+                    Save references in seconds, keep them organized by folder, and switch into canvas mode only when
+                    you need layout control.
+                  </p>
+                  <div className="hero-panel__actions">
+                    <button
+                      type="button"
+                      className="hero-panel__primary"
+                      onClick={() => {
+                        setManualPasteOpen(false)
+                        setCreateMenuOpen(true)
+                      }}
                     >
-                      <div className="gallery-card__top">
-                        <span className="gallery-card__badge">{getSavedItemTypeLabel(item)}</span>
-                        <button
-                          type="button"
-                          className="gallery-card__icon"
-                          onClick={() => renameSavedItem(item)}
-                          aria-label={`Renomear ${item.title}`}
-                        >
-                          <Pencil size={14} />
-                        </button>
-                      </div>
-                      <div className="gallery-card__visual">
-                        {item.type === 'image' && item.previewUrl ? (
-                          <div className="gallery-card__preview">
-                            <img src={item.previewUrl} alt={item.title} className="gallery-card__image" />
-                          </div>
-                        ) : null}
-                        <div className="gallery-card__content">
-                          <strong>{item.title}</strong>
-                          <span>{item.subtitle}</span>
-                        </div>
-                      </div>
-                      <div className="gallery-card__actions">
-                        <button type="button" onClick={() => openSavedItemInCanvas(item.id)}>
-                          <PenTool size={15} />
-                          <span>Editar</span>
-                        </button>
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              ) : (
-                <div className="library-stage__empty">
-                  <div className="capture-empty-state capture-empty-state--library">
-                    <div className="capture-empty-state__badge">Fluxo rapido</div>
-                    <h2>{activeFolder?.name ?? 'Sua biblioteca esta pronta'}</h2>
-                    <p>Cole um print, link, reel, short ou texto. O app organiza e voce renomeia depois.</p>
-                    <div className="capture-empty-state__actions">
-                      <button type="button" onClick={createQuickNote}>
-                        <StickyNote size={16} />
-                        <span>Nova nota</span>
-                      </button>
-                      <button type="button" onClick={() => createQuickText('title')}>
-                        <Type size={16} />
-                        <span>Novo titulo</span>
-                      </button>
-                      <button type="button" onClick={() => setWorkspaceView('edit')}>
-                        <PenTool size={16} />
-                        <span>Abrir canvas</span>
-                      </button>
-                    </div>
-                    <ol className="capture-empty-state__steps">
-                      <li>Copie algo de fora do app</li>
-                      <li>Cole aqui dentro</li>
-                      <li>Renomeie e mova para a pasta certa</li>
-                    </ol>
+                      <Plus size={16} />
+                      <span>Create item</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="hero-panel__secondary"
+                      onClick={() => void openManualPastePanel()}
+                    >
+                      <Copy size={16} />
+                      <span>Paste into folder</span>
+                    </button>
                   </div>
                 </div>
-              )}
-            </div>
-          )}
 
-          {workspaceView === 'edit' && (selectedSavedItem || selectedImageShapeId || activePortraitId) && (
-            <div className="selection-actions">
-              {selectedSavedItem && (
-                <button type="button" onClick={() => renameSavedItem(selectedSavedItem)}>
-                  <Pencil size={15} />
-                  <span>Renomear</span>
-                </button>
-              )}
-              {selectedImageShapeId && activePortraitId && (
-                <button type="button" onClick={fitSelectedPrintToActivePortrait}>
-                  <RectangleVertical size={15} />
-                  <span>Ajustar ao retrato</span>
-                </button>
-              )}
-              {selectedImageShapeId && (
-                <button type="button" onClick={cropSelectedImage}>
-                  <Crop size={15} />
-                  <span>Recortar</span>
-                </button>
-              )}
-            </div>
-          )}
+                <div className="hero-panel__summary">
+                  <div className="metric-card">
+                    <span className="metric-card__label">Collections</span>
+                    <strong>{folders.length}</strong>
+                    <span>Organized spaces</span>
+                  </div>
+                  <div className="metric-card">
+                    <span className="metric-card__label">Saved items</span>
+                    <strong>{savedItems.length}</strong>
+                    <span>Ready to revisit</span>
+                  </div>
+                  <div className="metric-card">
+                    <span className="metric-card__label">Active folder</span>
+                    <strong>{activeFolder?.name ?? 'Main library'}</strong>
+                    <span>Current working context</span>
+                  </div>
+                </div>
+              </section>
 
-          <div className="canvas-stage">
-            {!boardCount && workspaceView === 'edit' && (
-              <div className="capture-empty-state">
-                <div className="capture-empty-state__badge">Fluxo rapido</div>
-                <h2>{activeFolder?.name ?? 'Sua biblioteca esta pronta'}</h2>
-                <p>Cole um print, link, reel, short ou texto. O app organiza e voce renomeia depois.</p>
-                <div className="capture-empty-state__actions">
-                  <button type="button" onClick={createQuickNote}>
-                    <StickyNote size={16} />
-                    <span>Nova nota</span>
-                  </button>
-                  <button type="button" onClick={() => createQuickText('title')}>
-                    <Type size={16} />
-                    <span>Novo titulo</span>
+              <div className="library-content-grid">
+                <section className="content-panel">
+                  <div className="content-panel__header">
+                    <div>
+                      <span className="section-kicker">Folder contents</span>
+                      <h3>
+                        {filteredSavedItems.length
+                          ? `${filteredSavedItems.length} premium item${filteredSavedItems.length > 1 ? 's' : ''}`
+                          : 'Your folder is ready for its first saved item'}
+                      </h3>
+                    </div>
+                    <button type="button" className="content-panel__link" onClick={() => setWorkspaceView('edit')}>
+                      <span>Open canvas</span>
+                      <ChevronsRight size={16} />
+                    </button>
+                  </div>
+
+                  {filteredSavedItems.length ? (
+                    <div className="library-stage__grid">
+                      {filteredSavedItems.map((item) => (
+                        <article
+                          key={`gallery-${item.id}`}
+                          className={`gallery-card gallery-card--${item.type} ${
+                            item.id === lastSavedItemId ? 'gallery-card--fresh' : ''
+                          }`}
+                        >
+                          <div className="gallery-card__top">
+                            <span className="gallery-card__badge">{getSavedItemTypeLabel(item)}</span>
+                            <button
+                              type="button"
+                              className="gallery-card__icon"
+                              onClick={() => renameSavedItem(item)}
+                              aria-label={`Renomear ${item.title}`}
+                            >
+                              <Pencil size={14} />
+                            </button>
+                          </div>
+                          <div className="gallery-card__visual">
+                            {item.type === 'image' && item.previewUrl ? (
+                              <div className="gallery-card__preview">
+                                <img src={item.previewUrl} alt={item.title} className="gallery-card__image" />
+                              </div>
+                            ) : (
+                              <div className="gallery-card__placeholder">
+                                {item.type === 'media' ? (
+                                  <BookOpen size={24} />
+                                ) : item.type === 'bookmark' ? (
+                                  <Link2 size={24} />
+                                ) : item.type === 'note' || item.type === 'text' ? (
+                                  <MessageSquareText size={24} />
+                                ) : (
+                                  <Image size={24} />
+                                )}
+                              </div>
+                            )}
+                            <div className="gallery-card__content">
+                              <strong>{item.title}</strong>
+                              <span>{item.subtitle}</span>
+                            </div>
+                          </div>
+                          <div className="gallery-card__actions">
+                            <button type="button" onClick={() => openSavedItemInCanvas(item.id)}>
+                              <PenTool size={15} />
+                              <span>Edit</span>
+                            </button>
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="capture-empty-state capture-empty-state--library">
+                      <div className="capture-empty-state__badge">Fast capture flow</div>
+                      <h2>{activeFolder?.name ?? 'Your library is ready'}</h2>
+                      <p>Paste a print, link, reel, short, note or title. The app will keep it clean and organized.</p>
+                      <div className="capture-empty-state__actions">
+                        <button type="button" onClick={() => void openManualPastePanel()}>
+                          <Copy size={16} />
+                          <span>Paste something</span>
+                        </button>
+                        <button type="button" onClick={createQuickNote}>
+                          <StickyNote size={16} />
+                          <span>New note</span>
+                        </button>
+                        <button type="button" onClick={createFolder}>
+                          <FolderPlus size={16} />
+                          <span>New folder</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </section>
+
+                <aside className="insights-panel">
+                  <div className="insights-panel__card">
+                    <span className="section-kicker">At a glance</span>
+                    <div className="insights-panel__stats">
+                      <div className="insight-stat">
+                        <Image size={16} />
+                        <div>
+                          <strong>{savedImageCount}</strong>
+                          <span>Prints</span>
+                        </div>
+                      </div>
+                      <div className="insight-stat">
+                        <BookOpen size={16} />
+                        <div>
+                          <strong>{savedMediaCount}</strong>
+                          <span>Links & media</span>
+                        </div>
+                      </div>
+                      <div className="insight-stat">
+                        <MessageSquareText size={16} />
+                        <div>
+                          <strong>{savedTextCount}</strong>
+                          <span>Text blocks</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="insights-panel__card">
+                    <span className="section-kicker">Current collection</span>
+                    <h3>{activeFolder?.name ?? 'Untitled library'}</h3>
+                    <p>Use the canvas only when you need arrangement. Stay in the library when you just need to save and browse.</p>
+                    <div className="insights-panel__actions">
+                      <button type="button" onClick={() => renameFolder()}>
+                        <Pencil size={15} />
+                        <span>Rename</span>
+                      </button>
+                      <button type="button" onClick={() => setWorkspaceView('edit')}>
+                        <PenTool size={15} />
+                        <span>Edit mode</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="insights-panel__card insights-panel__card--feature">
+                    <span className="section-kicker">Latest saved</span>
+                    {latestSavedItem ? (
+                      <>
+                        <h3>{latestSavedItem.title}</h3>
+                        <p>{latestSavedItem.subtitle}</p>
+                        <button type="button" onClick={() => openSavedItemInCanvas(latestSavedItem.id)}>
+                          <span>Open latest item</span>
+                          <ArrowRight size={15} />
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <h3>Nothing saved yet</h3>
+                        <p>Start by pasting a reference or creating a note for this folder.</p>
+                        <button type="button" onClick={() => void openManualPastePanel()}>
+                          <span>Paste first item</span>
+                          <ArrowRight size={15} />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </aside>
+              </div>
+            </div>
+          ) : (
+            <div className="edit-stage">
+              <div className="edit-stage__header">
+                <div className="edit-stage__copy">
+                  <span className="section-kicker">Canvas studio</span>
+                  <h2>Edit with precision when the layout matters</h2>
+                  <p>Crop, align, frame, and refine while preserving the same collection structure.</p>
+                </div>
+                <div className="edit-stage__actions">
+                  <button type="button" onClick={() => void openManualPastePanel()}>
+                    <Copy size={16} />
+                    <span>Paste</span>
                   </button>
                   <button type="button" onClick={createPortrait}>
                     <RectangleVertical size={16} />
-                    <span>Novo retrato</span>
+                    <span>New portrait</span>
+                  </button>
+                  <button type="button" onClick={focusCanvas}>
+                    <BringToFront size={16} />
+                    <span>Focus canvas</span>
                   </button>
                 </div>
-                <ol className="capture-empty-state__steps">
-                  <li>Copie algo de fora do app</li>
-                  <li>Cole aqui dentro</li>
-                  <li>Renomeie e mova para a pasta certa</li>
-                </ol>
               </div>
-            )}
-            <Tldraw
-              components={tldrawComponents}
-              persistenceKey="whiteboard-studio-autosave"
-              onMount={setEditor}
-              shapeUtils={shapeUtils}
-              autoFocus
-            />
-            {measurementOverlay.guides.length > 0 && (
-              <svg
-                className="measurement-overlay"
-                viewBox={`0 0 ${measurementOverlay.width} ${measurementOverlay.height}`}
-                preserveAspectRatio="none"
-                aria-hidden="true"
-              >
-                {measurementOverlay.guides.map((guide) => {
-                  const label = `${Math.round(guide.distance)} px`
-                  const labelWidth = label.length * 7 + 14
-                  const centerX = (guide.start.x + guide.end.x) / 2
-                  const centerY = (guide.start.y + guide.end.y) / 2
-                  const capSize = 7
 
-                  return (
-                    <g key={guide.id}>
-                      <line
-                        className="measurement-overlay__line"
-                        x1={guide.start.x}
-                        y1={guide.start.y}
-                        x2={guide.end.x}
-                        y2={guide.end.y}
-                      />
-                      {guide.orientation === 'horizontal' ? (
-                        <>
+              {workspaceView === 'edit' && (selectedSavedItem || selectedImageShapeId || activePortraitId) && (
+                <div className="selection-actions">
+                  {selectedSavedItem && (
+                    <button type="button" onClick={() => renameSavedItem(selectedSavedItem)}>
+                      <Pencil size={15} />
+                      <span>Rename</span>
+                    </button>
+                  )}
+                  {selectedImageShapeId && activePortraitId && (
+                    <button type="button" onClick={fitSelectedPrintToActivePortrait}>
+                      <RectangleVertical size={15} />
+                      <span>Fit to portrait</span>
+                    </button>
+                  )}
+                  {selectedImageShapeId && (
+                    <button type="button" onClick={cropSelectedImage}>
+                      <Crop size={15} />
+                      <span>Crop</span>
+                    </button>
+                  )}
+                </div>
+              )}
+
+              <div className="canvas-stage">
+                {!boardCount && workspaceView === 'edit' && (
+                  <div className="capture-empty-state">
+                    <div className="capture-empty-state__badge">Canvas ready</div>
+                    <h2>{activeFolder?.name ?? 'Your workspace is ready'}</h2>
+                    <p>Paste an asset, create a text block, or add a portrait frame to start composing visually.</p>
+                    <div className="capture-empty-state__actions">
+                      <button type="button" onClick={() => void openManualPastePanel()}>
+                        <Copy size={16} />
+                        <span>Paste capture</span>
+                      </button>
+                      <button type="button" onClick={createQuickNote}>
+                        <StickyNote size={16} />
+                        <span>New note</span>
+                      </button>
+                      <button type="button" onClick={createPortrait}>
+                        <RectangleVertical size={16} />
+                        <span>Portrait frame</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <Tldraw
+                  components={tldrawComponents}
+                  persistenceKey="whiteboard-studio-autosave"
+                  onMount={setEditor}
+                  shapeUtils={shapeUtils}
+                  autoFocus
+                />
+                {measurementOverlay.guides.length > 0 && (
+                  <svg
+                    className="measurement-overlay"
+                    viewBox={`0 0 ${measurementOverlay.width} ${measurementOverlay.height}`}
+                    preserveAspectRatio="none"
+                    aria-hidden="true"
+                  >
+                    {measurementOverlay.guides.map((guide) => {
+                      const label = `${Math.round(guide.distance)} px`
+                      const labelWidth = label.length * 7 + 14
+                      const centerX = (guide.start.x + guide.end.x) / 2
+                      const centerY = (guide.start.y + guide.end.y) / 2
+                      const capSize = 7
+
+                      return (
+                        <g key={guide.id}>
                           <line
-                            className="measurement-overlay__cap"
+                            className="measurement-overlay__line"
                             x1={guide.start.x}
-                            y1={guide.start.y - capSize}
-                            x2={guide.start.x}
-                            y2={guide.start.y + capSize}
-                          />
-                          <line
-                            className="measurement-overlay__cap"
-                            x1={guide.end.x}
-                            y1={guide.end.y - capSize}
-                            x2={guide.end.x}
-                            y2={guide.end.y + capSize}
-                          />
-                          <rect
-                            className="measurement-overlay__label-box"
-                            x={centerX - labelWidth / 2}
-                            y={centerY - 24}
-                            width={labelWidth}
-                            height={18}
-                            rx={9}
-                            ry={9}
-                          />
-                          <text className="measurement-overlay__label" x={centerX} y={centerY - 11}>
-                            {label}
-                          </text>
-                        </>
-                      ) : (
-                        <>
-                          <line
-                            className="measurement-overlay__cap"
-                            x1={guide.start.x - capSize}
                             y1={guide.start.y}
-                            x2={guide.start.x + capSize}
-                            y2={guide.start.y}
-                          />
-                          <line
-                            className="measurement-overlay__cap"
-                            x1={guide.end.x - capSize}
-                            y1={guide.end.y}
-                            x2={guide.end.x + capSize}
+                            x2={guide.end.x}
                             y2={guide.end.y}
                           />
-                          <rect
-                            className="measurement-overlay__label-box"
-                            x={centerX + 10}
-                            y={centerY - 9}
-                            width={labelWidth}
-                            height={18}
-                            rx={9}
-                            ry={9}
-                          />
-                          <text className="measurement-overlay__label measurement-overlay__label--start" x={centerX + 10 + labelWidth / 2} y={centerY + 4}>
-                            {label}
-                          </text>
-                        </>
-                      )}
-                    </g>
-                  )
-                })}
-              </svg>
-            )}
-          </div>
+                          {guide.orientation === 'horizontal' ? (
+                            <>
+                              <line
+                                className="measurement-overlay__cap"
+                                x1={guide.start.x}
+                                y1={guide.start.y - capSize}
+                                x2={guide.start.x}
+                                y2={guide.start.y + capSize}
+                              />
+                              <line
+                                className="measurement-overlay__cap"
+                                x1={guide.end.x}
+                                y1={guide.end.y - capSize}
+                                x2={guide.end.x}
+                                y2={guide.end.y + capSize}
+                              />
+                              <rect
+                                className="measurement-overlay__label-box"
+                                x={centerX - labelWidth / 2}
+                                y={centerY - 24}
+                                width={labelWidth}
+                                height={18}
+                                rx={9}
+                                ry={9}
+                              />
+                              <text className="measurement-overlay__label" x={centerX} y={centerY - 11}>
+                                {label}
+                              </text>
+                            </>
+                          ) : (
+                            <>
+                              <line
+                                className="measurement-overlay__cap"
+                                x1={guide.start.x - capSize}
+                                y1={guide.start.y}
+                                x2={guide.start.x + capSize}
+                                y2={guide.start.y}
+                              />
+                              <line
+                                className="measurement-overlay__cap"
+                                x1={guide.end.x - capSize}
+                                y1={guide.end.y}
+                                x2={guide.end.x + capSize}
+                                y2={guide.end.y}
+                              />
+                              <rect
+                                className="measurement-overlay__label-box"
+                                x={centerX + 10}
+                                y={centerY - 9}
+                                width={labelWidth}
+                                height={18}
+                                rx={9}
+                                ry={9}
+                              />
+                              <text
+                                className="measurement-overlay__label measurement-overlay__label--start"
+                                x={centerX + 10 + labelWidth / 2}
+                                y={centerY + 4}
+                              >
+                                {label}
+                              </text>
+                            </>
+                          )}
+                        </g>
+                      )
+                    })}
+                  </svg>
+                )}
+              </div>
 
-          {workspaceView === 'edit' && (
-            <div className="canvas-nav" aria-label="Navegacao do canvas">
-              <button type="button" onClick={setHandMode} aria-label="Mover pelo canvas">
-                <Move size={16} />
-              </button>
-              <button type="button" onClick={zoomIn} aria-label="Aproximar">
-                <Plus size={16} />
-              </button>
-              <button type="button" onClick={zoomOut} aria-label="Afastar">
-                <Minus size={16} />
-              </button>
-              <button type="button" onClick={focusCanvas} aria-label="Ajustar ao quadro">
-                <BringToFront size={16} />
-              </button>
+              <div className="canvas-nav" aria-label="Navegacao do canvas">
+                <button type="button" onClick={setHandMode} aria-label="Mover pelo canvas">
+                  <Move size={16} />
+                </button>
+                <button type="button" onClick={zoomIn} aria-label="Aproximar">
+                  <Plus size={16} />
+                </button>
+                <button type="button" onClick={zoomOut} aria-label="Afastar">
+                  <Minus size={16} />
+                </button>
+                <button type="button" onClick={focusCanvas} aria-label="Ajustar ao quadro">
+                  <BringToFront size={16} />
+                </button>
+              </div>
             </div>
           )}
         </section>
+
+        <nav className="mobile-bottom-nav" aria-label="Mobile navigation">
+          <button type="button" onClick={() => setWorkspaceView('library')}>
+            <LayoutDashboard size={18} />
+            <span>Library</span>
+          </button>
+          <button type="button" onClick={() => setWorkspaceView('edit')}>
+            <PenTool size={18} />
+            <span>Edit</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setManualPasteOpen(false)
+              setCreateMenuOpen(true)
+            }}
+          >
+            <Plus size={18} />
+            <span>New</span>
+          </button>
+          <button type="button" onClick={() => void openManualPastePanel()}>
+            <Copy size={18} />
+            <span>Paste</span>
+          </button>
+        </nav>
       </main>
     </div>
   )
