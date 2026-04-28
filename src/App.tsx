@@ -17,6 +17,7 @@ import {
 } from 'tldraw'
 import { GeometricIcon, type GeometricIconName } from './components/GeometricIcon'
 import { INSTAGRAM_REEL_SHAPE_TYPE, InstagramReelShapeUtil } from './shapes/InstagramReelShapeUtil'
+import canvasCenterMotif from './assets/canvas-center-motif.png'
 import './App.css'
 
 type MediaPasteItem =
@@ -1644,14 +1645,13 @@ function App() {
           </button>
         </div>
 
-        <div className={`canvas-center-watermark ${isBoardEmpty ? 'canvas-center-watermark--visible' : 'canvas-center-watermark--faded'}`} aria-hidden="true">
-          <div className="canvas-center-watermark__motif-shell">
-            
-            <div className="canvas-center-watermark__motif">
-              <CanvasWatermarkMotif />
+          <div className={`canvas-center-watermark ${isBoardEmpty ? 'canvas-center-watermark--visible' : 'canvas-center-watermark--faded'}`} aria-hidden="true">
+            <div className="canvas-center-watermark__motif-shell">
+              <div className="canvas-center-watermark__motif">
+                <img src={canvasCenterMotif} alt="" className="canvas-center-watermark__image" />
+              </div>
             </div>
           </div>
-        </div>
 
         {!assetsOpen && !menuOpen && !pasteOpen && !boardDialog && (
           <aside className={`floating-panel properties-panel ${mobilePropertiesOpen ? 'properties-panel--mobile-open' : ''}`}>
