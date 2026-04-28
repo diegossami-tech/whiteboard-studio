@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+﻿import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   createEmptyBookmarkShape,
   createShapeId,
@@ -483,6 +483,31 @@ function ToolButton({
 
 function GeometricMotifIcon() {
   return <GeometricIcon name="geometry" size={18} />
+}
+
+function CanvasWatermarkMotif() {
+  return (
+    <svg viewBox="0 0 320 320" fill="none" aria-hidden="true">
+      <g opacity="0.22" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M160 38v244" />
+        <path d="M38 160h244" />
+        <path d="M74 74l172 172" />
+        <path d="M246 74 74 246" />
+        <rect x="96" y="96" width="128" height="128" rx="18" />
+        <rect x="116" y="116" width="88" height="88" rx="14" transform="rotate(45 160 160)" />
+      </g>
+      <g opacity="0.82" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M160 58c10 28 34 52 62 62-28 10-52 34-62 62-10-28-34-52-62-62 28-10 52-34 62-62Z" />
+        <path d="M160 70c-18 22-26 54-22 90 36 4 68-4 90-22-18-22-26-54-22-90-36-4-68 4-90 22Z" />
+        <path d="M160 70c18 22 26 54 22 90-36 4-68-4-90-22 18-22 26-54 22-90 36-4 68 4 90 22Z" />
+        <path d="M250 160c-22-18-54-26-90-22-4 36 4 68 22 90 22-18 54-26 90-22 4-36-4-68-22-90Z" />
+        <path d="M70 160c22-18 54-26 90-22 4 36-4 68-22 90-22-18-54-26-90-22-4-36 4-68 22-90Z" />
+        <path d="M160 116c8 20 24 36 44 44-20 8-36 24-44 44-8-20-24-36-44-44 20-8 36-24 44-44Z" />
+        <path d="M160 136c-5 10-14 19-24 24 10 5 19 14 24 24 5-10 14-19 24-24-10-5-19-14-24-24Z" />
+      </g>
+      <circle cx="160" cy="160" r="6" fill="currentColor" opacity="0.18" />
+    </svg>
+  )
 }
 
 function clamp(value: number, min: number, max: number) {
@@ -1190,7 +1215,7 @@ function App() {
 
           <div className="upgrade-card">
             <div className="upgrade-card__icon" aria-hidden="true">
-              <GeometricMotifIcon />
+              <CanvasWatermarkMotif />
             </div>
             <div className="upgrade-card__copy">
               <strong>Plano Pro</strong>
@@ -1261,7 +1286,7 @@ function App() {
               <span>Sincronizado</span>
             </div>
             <div className="app-topbar__mobile-brand" aria-hidden="true">
-              <GeometricMotifIcon />
+              <CanvasWatermarkMotif />
             </div>
           </div>
 
@@ -1524,16 +1549,21 @@ function App() {
           </button>
         </div>
 
+        <div className={`canvas-center-watermark ${isBoardEmpty ? 'canvas-center-watermark--visible' : 'canvas-center-watermark--faded'}`} aria-hidden="true">
+          <div className="canvas-center-watermark__motif-shell">
+            
+            <div className="canvas-center-watermark__motif">
+              <CanvasWatermarkMotif />
+            </div>
+          </div>
+          <span className="canvas-center-watermark__label">Begin with structure.</span>
+        </div>
+
         {isBoardEmpty && (
           <div className="canvas-showcase-hint" aria-hidden="true">
             <div className="canvas-showcase-hint__note canvas-showcase-hint__note--left">
               <strong>Estrutura</strong>
               <span>Traz clareza ao que é complexo.</span>
-            </div>
-            <div className="canvas-showcase-hint__center">
-              <div className="canvas-showcase-hint__motif">
-                <GeometricMotifIcon />
-              </div>
             </div>
             <div className="canvas-showcase-hint__note canvas-showcase-hint__note--top-right">
               <strong>Ideias</strong>
@@ -1786,7 +1816,7 @@ function App() {
             aria-label="Geometric tool"
             title="Geometric tool"
           >
-            <GeometricMotifIcon />
+            <CanvasWatermarkMotif />
             <span>Geometria</span>
           </button>
         </div>
@@ -1898,7 +1928,7 @@ function App() {
                   onClick={activateGeometricMode}
                   aria-label="Geometric tool"
                 >
-                  <GeometricMotifIcon />
+                  <CanvasWatermarkMotif />
                   <span>Geo</span>
                 </button>
               </div>
@@ -1955,3 +1985,5 @@ function App() {
 }
 
 export default App
+
+

@@ -418,9 +418,10 @@ export function GeometricIcon({ name, size = 18, framed = false, className, ...p
       height={size}
       fill="none"
       stroke="currentColor"
-      strokeWidth="1.7"
+      strokeWidth="1.58"
       strokeLinecap="round"
       strokeLinejoin="round"
+      shapeRendering="geometricPrecision"
       className={['geometric-icon', className].filter(Boolean).join(' ')}
       aria-hidden="true"
       {...props}

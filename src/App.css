@@ -79,6 +79,11 @@ img {
 .geometric-icon {
   overflow: visible;
   vector-effect: non-scaling-stroke;
+  transition:
+    color 0.22s ease,
+    opacity 0.22s ease,
+    transform 0.22s ease,
+    filter 0.22s ease;
 }
 
 .whiteboard-app {
@@ -274,9 +279,9 @@ img {
 
 .workspace-brand__copy strong {
   font-size: 1.2rem;
-  font-weight: 500;
-  letter-spacing: -0.02em;
-  line-height: 1;
+  font-weight: 520;
+  letter-spacing: -0.024em;
+  line-height: 1.02;
   font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif;
 }
 
@@ -777,6 +782,15 @@ img {
   cursor: pointer;
 }
 
+.floating-icon-button:hover .geometric-icon,
+.secondary-icon-button:hover .geometric-icon,
+.sidebar-mini-action:hover .geometric-icon,
+.tool-button:hover .geometric-icon,
+.mobile-bottom-nav__item:hover .geometric-icon {
+  color: var(--gold);
+  transform: translateY(-0.5px);
+}
+
 .floating-icon-button:disabled,
 .secondary-icon-button:disabled,
 .secondary-button:disabled {
@@ -863,6 +877,65 @@ img {
   inset: 0;
   z-index: 2;
   pointer-events: none;
+}
+
+.canvas-center-watermark {
+  position: absolute;
+  left: 50%;
+  top: 49%;
+  z-index: 1;
+  display: grid;
+  justify-items: center;
+  gap: 18px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  transition:
+    opacity 0.38s ease,
+    transform 0.38s ease,
+    filter 0.38s ease,
+    scale 0.38s ease;
+}
+
+.canvas-center-watermark--visible {
+  opacity: 0.72;
+  filter: saturate(1.02);
+}
+
+.canvas-center-watermark--faded {
+  opacity: 0.08;
+  filter: saturate(0.82) blur(0.2px);
+  transform: translate(-50%, -50%) scale(0.982);
+}
+
+.canvas-center-watermark__motif-shell {
+  position: relative;
+  width: 336px;
+  height: 336px;
+  display: grid;
+  place-items: center;
+  filter: drop-shadow(0 18px 32px rgba(179, 141, 76, 0.06));
+}
+
+.canvas-center-watermark__motif {
+  width: 252px;
+  height: 252px;
+  display: grid;
+  place-items: center;
+  color: rgba(195, 136, 47, 0.9);
+}
+
+.canvas-center-watermark__motif svg {
+  width: 100%;
+  height: 100%;
+  opacity: 0.9;
+}
+
+.canvas-center-watermark__label {
+  font-size: 0.78rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(22, 35, 56, 0.34);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.78);
 }
 
 .canvas-showcase-hint__center {
@@ -969,10 +1042,10 @@ img {
 
 .floating-panel__header h2 {
   margin: 6px 0 0;
-  font-size: 0.96rem;
-  font-weight: 650;
-  letter-spacing: -0.03em;
-  line-height: 1.18;
+  font-size: 0.98rem;
+  font-weight: 640;
+  letter-spacing: -0.028em;
+  line-height: 1.16;
 }
 
 .main-menu-panel {
@@ -1322,6 +1395,10 @@ img {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.96),
     0 16px 28px rgba(18, 29, 47, 0.06);
+  transition:
+    box-shadow 0.24s ease,
+    transform 0.24s ease,
+    background-color 0.24s ease;
 }
 
 .dock-divider {
@@ -1358,6 +1435,7 @@ img {
 
 .tool-button:hover {
   transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.54);
 }
 
 .tool-button--accent {
@@ -1392,6 +1470,11 @@ img {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.98),
     0 10px 20px rgba(18, 29, 47, 0.045);
+}
+
+.tool-button--active .geometric-icon,
+.tool-button--accent .geometric-icon {
+  color: inherit;
 }
 
 .tool-button--compact {
@@ -1612,6 +1695,16 @@ img {
   .canvas-accent-banner {
     right: 348px;
   }
+
+  .canvas-center-watermark__motif-shell {
+    width: 312px;
+    height: 312px;
+  }
+
+  .canvas-center-watermark__motif {
+    width: 228px;
+    height: 228px;
+  }
 }
 
 @media (max-width: 1080px) {
@@ -1631,6 +1724,16 @@ img {
   .canvas-accent-banner {
     left: calc(var(--sidebar-width) + 42px);
     right: 328px;
+  }
+
+  .canvas-center-watermark__motif-shell {
+    width: 284px;
+    height: 284px;
+  }
+
+  .canvas-center-watermark__motif {
+    width: 206px;
+    height: 206px;
   }
 }
 
@@ -1689,6 +1792,31 @@ img {
     top: 76px;
     left: 14px;
     right: 14px;
+  }
+
+  .canvas-center-watermark {
+    top: 47%;
+    gap: 14px;
+  }
+
+  .canvas-center-watermark__motif-shell {
+    width: 214px;
+    height: 214px;
+  }
+
+  .canvas-center-watermark__guides {
+    inset: 18px;
+    border-radius: 18px;
+  }
+
+  .canvas-center-watermark__motif {
+    width: 156px;
+    height: 156px;
+  }
+
+  .canvas-center-watermark__label {
+    font-size: 0.66rem;
+    letter-spacing: 0.14em;
   }
 
   .canvas-accent-banner__line {
@@ -1908,6 +2036,16 @@ img {
 
   .canvas-accent-banner {
     display: none;
+  }
+
+  .canvas-center-watermark__motif-shell {
+    width: 188px;
+    height: 188px;
+  }
+
+  .canvas-center-watermark__motif {
+    width: 138px;
+    height: 138px;
   }
 
   .dialog-shell {
