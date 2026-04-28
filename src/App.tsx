@@ -1230,29 +1230,30 @@ function App() {
             </button>
           </div>
 
-          <section className="workspace-sidebar__section">
-            <div className="workspace-sidebar__section-header workspace-sidebar__section-header--plain">
-              <span className="panel-kicker">INÍCIO</span>
-            </div>
-            <nav className="sidebar-nav-list" aria-label="Navegação principal">
-              <button type="button" className={`sidebar-nav-item ${activeSidebarSection === 'files' ? 'sidebar-nav-item--active' : ''}`} onClick={() => openSidebarSection('files')}>
-                <GeometricIcon name="files" size={16} />
-                <span>Meus arquivos</span>
-              </button>
-              <button type="button" className={`sidebar-nav-item ${activeSidebarSection === 'recent' ? 'sidebar-nav-item--active' : ''}`} onClick={() => openSidebarSection('recent')}>
-                <GeometricIcon name="recent" size={16} />
-                <span>Recentes</span>
-              </button>
-              <button type="button" className={`sidebar-nav-item ${activeSidebarSection === 'favorites' ? 'sidebar-nav-item--active' : ''}`} onClick={() => openSidebarSection('favorites')}>
-                <GeometricIcon name="favorites" size={16} />
-                <span>Favoritos</span>
-              </button>
-              <button type="button" className={`sidebar-nav-item ${activeSidebarSection === 'shared' ? 'sidebar-nav-item--active' : ''}`} onClick={() => openSidebarSection('shared')}>
-                <GeometricIcon name="shared" size={16} />
-                <span>Compartilhados</span>
-              </button>
-            </nav>
-          </section>
+          <div className="workspace-sidebar__body">
+            <section className="workspace-sidebar__section">
+              <div className="workspace-sidebar__section-header workspace-sidebar__section-header--plain">
+                <span className="panel-kicker">INÍCIO</span>
+              </div>
+              <nav className="sidebar-nav-list" aria-label="Navegação principal">
+                <button type="button" className={`sidebar-nav-item ${activeSidebarSection === 'files' ? 'sidebar-nav-item--active' : ''}`} onClick={() => openSidebarSection('files')}>
+                  <GeometricIcon name="files" size={16} />
+                  <span>Meus arquivos</span>
+                </button>
+                <button type="button" className={`sidebar-nav-item ${activeSidebarSection === 'recent' ? 'sidebar-nav-item--active' : ''}`} onClick={() => openSidebarSection('recent')}>
+                  <GeometricIcon name="recent" size={16} />
+                  <span>Recentes</span>
+                </button>
+                <button type="button" className={`sidebar-nav-item ${activeSidebarSection === 'favorites' ? 'sidebar-nav-item--active' : ''}`} onClick={() => openSidebarSection('favorites')}>
+                  <GeometricIcon name="favorites" size={16} />
+                  <span>Favoritos</span>
+                </button>
+                <button type="button" className={`sidebar-nav-item ${activeSidebarSection === 'shared' ? 'sidebar-nav-item--active' : ''}`} onClick={() => openSidebarSection('shared')}>
+                  <GeometricIcon name="shared" size={16} />
+                  <span>Compartilhados</span>
+                </button>
+              </nav>
+            </section>
 
             <section className="workspace-sidebar__section">
               <div className="workspace-sidebar__section-header workspace-sidebar__section-header--plain">
@@ -1272,22 +1273,22 @@ function App() {
                   <span>Lixeira</span>
                 </button>
               </nav>
-          </section>
+            </section>
 
-          <section className="workspace-sidebar__section workspace-sidebar__section--boards">
-            <div className="workspace-sidebar__section-header">
-              <span className="panel-kicker">PASTAS</span>
-              <button type="button" className="sidebar-mini-action" onClick={createBoard} aria-label="Criar pasta">
-                <GeometricIcon name="plus" size={15} />
-              </button>
-            </div>
-            <div className="sidebar-board-list">
-              {DESKTOP_FOLDERS.map((folderName) => (
-                <button
-                  key={folderName}
-                  type="button"
-                  className={`sidebar-board-card ${folderName === 'Projetos' ? 'sidebar-board-card--active' : ''}`}
-                  onClick={() => setStatusMessage(`A pasta ${folderName} entra no próximo passo.`)}
+            <section className="workspace-sidebar__section workspace-sidebar__section--boards">
+              <div className="workspace-sidebar__section-header">
+                <span className="panel-kicker">PASTAS</span>
+                <button type="button" className="sidebar-mini-action" onClick={createBoard} aria-label="Criar pasta">
+                  <GeometricIcon name="plus" size={15} />
+                </button>
+              </div>
+              <div className="sidebar-board-list">
+                {DESKTOP_FOLDERS.map((folderName) => (
+                  <button
+                    key={folderName}
+                    type="button"
+                    className={`sidebar-board-card ${folderName === 'Projetos' ? 'sidebar-board-card--active' : ''}`}
+                    onClick={() => setStatusMessage(`A pasta ${folderName} entra no próximo passo.`)}
                   >
                     <div className="sidebar-board-card__glyph" aria-hidden="true">
                       <GeometricIcon name="folder" size={15} />
@@ -1313,15 +1314,16 @@ function App() {
                 <span>Upgrade</span>
               </button>
             </div>
-
-            <button type="button" className="sidebar-footer-shortcut" aria-label="Recolher sidebar" title="Recolher sidebar">
-              <span className="sidebar-footer-shortcut__left">
-                <GeometricIcon name="chevron-left" size={14} />
-                <span>Recolher sidebar</span>
-              </span>
-              <span className="sidebar-footer-shortcut__hint">Alt + B</span>
-            </button>
+          </div>
           </aside>
+
+          <button type="button" className="sidebar-footer-shortcut" aria-label="Recolher sidebar" title="Recolher sidebar">
+            <span className="sidebar-footer-shortcut__left">
+              <GeometricIcon name="chevron-left" size={14} />
+              <span>Recolher sidebar</span>
+            </span>
+            <span className="sidebar-footer-shortcut__hint">Alt + B</span>
+          </button>
 
         <header className="app-topbar">
           <div className="app-topbar__left">
