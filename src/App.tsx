@@ -5,12 +5,15 @@ import {
   ArrowUpRight,
   BookOpen,
   BringToFront,
+  ChevronLeft,
   ChevronDown,
   Circle,
   Compass,
   Copy,
   CopyPlus,
+  Clock3,
   Eraser,
+  Folder,
   FolderKanban,
   Hand,
   Image,
@@ -23,16 +26,16 @@ import {
   PencilLine,
   Plus,
   Redo2,
-  Search,
   Share2,
   Square,
-  Sparkles,
+  Star,
   Cloud,
   StickyNote,
   Trash2,
   Type,
   Undo2,
   UserCircle2,
+  Users,
   X,
 } from 'lucide-react'
 import {
@@ -64,7 +67,7 @@ type MediaPasteItem =
 type BoardEntry = Pick<TLPage, 'id' | 'name'>
 type ToolbarTool = 'select' | 'hand' | 'rectangle' | 'ellipse' | 'line' | 'arrow' | 'text' | 'draw' | 'eraser'
 type BoardDialogState = { mode: 'create' | 'rename' } | null
-type SidebarSection = 'files' | 'recent' | 'favorites' | 'shared' | 'library' | 'templates' | 'trash'
+type SidebarSection = 'files' | 'recent' | 'favorites' | 'shared' | 'library' | 'templates' | 'examples' | 'trash'
 type AssetSummary = {
   id: TLShapeId
   type: 'image' | 'media' | 'bookmark' | 'text' | 'note'
@@ -86,15 +89,15 @@ const TOOLBAR_TOOLS: Array<{
   label: string
   icon: typeof MousePointer2
 }> = [
-  { id: 'select', label: 'Select', icon: MousePointer2 },
-  { id: 'hand', label: 'Hand', icon: Hand },
-  { id: 'rectangle', label: 'Rectangle', icon: Square },
-  { id: 'ellipse', label: 'Circle', icon: Circle },
-  { id: 'line', label: 'Line', icon: Minus },
-  { id: 'arrow', label: 'Arrow', icon: ArrowUpRight },
-  { id: 'text', label: 'Text', icon: Type },
-  { id: 'draw', label: 'Draw', icon: PencilLine },
-  { id: 'eraser', label: 'Eraser', icon: Eraser },
+  { id: 'select', label: 'Selecionar', icon: MousePointer2 },
+  { id: 'hand', label: 'Mão', icon: Hand },
+  { id: 'rectangle', label: 'Forma', icon: Square },
+  { id: 'ellipse', label: 'Círculo', icon: Circle },
+  { id: 'line', label: 'Linha', icon: Minus },
+  { id: 'arrow', label: 'Seta', icon: ArrowUpRight },
+  { id: 'text', label: 'Texto', icon: Type },
+  { id: 'draw', label: 'Desenho', icon: PencilLine },
+  { id: 'eraser', label: 'Borracha', icon: Eraser },
 ]
 
 const DOCK_DIVIDERS = new Set<ToolbarTool>(['hand', 'arrow', 'eraser'])
@@ -555,7 +558,7 @@ function App() {
   const [mobileToolsOpen, setMobileToolsOpen] = useState(false)
   const [mobilePropertiesOpen, setMobilePropertiesOpen] = useState(false)
   const [mobileMinimapOpen, setMobileMinimapOpen] = useState(false)
-  const [statusMessage, setStatusMessage] = useState('Paste images, links, or text straight onto the board.')
+  const [statusMessage, setStatusMessage] = useState('')
   const recentPastedUrlsRef = useRef<Set<string>>(new Set())
   const recentPasteTimerRef = useRef<number | null>(null)
 
@@ -955,7 +958,7 @@ function App() {
         setAssetsOpen(false)
         setMenuOpen(false)
         setPasteOpen(false)
-        setStatusMessage('Browse your boards and saved items from the workspace.')
+        setStatusMessage('Navegue pelos seus quadros e itens salvos no estúdio.')
         return
       }
 
@@ -963,7 +966,15 @@ function App() {
         setMenuOpen(false)
         setAssetsOpen(false)
         setPasteOpen(false)
-        setStatusMessage('Templates collection is coming next.')
+        setStatusMessage('A coleção de templates entra no próximo passo.')
+        return
+      }
+
+      if (section === 'examples') {
+        setMenuOpen(false)
+        setAssetsOpen(false)
+        setPasteOpen(false)
+        setStatusMessage('A galeria de exemplos entra no próximo passo.')
         return
       }
 
@@ -971,7 +982,7 @@ function App() {
         setMenuOpen(false)
         setAssetsOpen(false)
         setPasteOpen(false)
-        setStatusMessage('Recent activity view is coming next.')
+        setStatusMessage('A visão de recentes entra no próximo passo.')
         return
       }
 
@@ -979,7 +990,7 @@ function App() {
         setMenuOpen(false)
         setAssetsOpen(false)
         setPasteOpen(false)
-        setStatusMessage('Favorites view is coming next.')
+        setStatusMessage('A área de favoritos entra no próximo passo.')
         return
       }
 
@@ -987,7 +998,7 @@ function App() {
         setMenuOpen(false)
         setAssetsOpen(false)
         setPasteOpen(false)
-        setStatusMessage('Shared boards view is coming next.')
+        setStatusMessage('A área de compartilhados entra no próximo passo.')
         return
       }
 
@@ -995,7 +1006,7 @@ function App() {
         setMenuOpen(false)
         setAssetsOpen(false)
         setPasteOpen(false)
-        setStatusMessage('Trash is empty.')
+        setStatusMessage('A lixeira está vazia.')
         return
       }
 
@@ -1044,7 +1055,8 @@ function App() {
   )
 
   const boardName = boards.find((board) => board.id === activeBoardId)?.name ?? 'Board'
-  const assetCountLabel = `${assets.length} asset${assets.length === 1 ? '' : 's'}`
+  const assetCountLabel = `${assets.length} item${assets.length === 1 ? '' : 's'}`
+  const isBoardEmpty = assets.length === 0
 
   const minimap = useMemo(() => {
     if (!editor) return null
@@ -1122,56 +1134,73 @@ function App() {
         <div className="ornament-corner ornament-corner--bottom-right" aria-hidden="true" />
 
         <aside className="workspace-sidebar">
-          <div className="workspace-brand">
-            <div className="workspace-brand__mark" aria-hidden="true">
-              <div className="workspace-brand__star" />
+          <div className="workspace-sidebar__header">
+            <div className="workspace-brand">
+              <div className="workspace-brand__mark" aria-hidden="true">
+                <GeometricMotifIcon />
+              </div>
+              <div className="workspace-brand__copy">
+                <span className="workspace-brand__eyebrow">Whiteboard Studio</span>
+                <strong>Whiteboard Studio</strong>
+                <small className="workspace-brand__subtle">PENSE. DESENHE. CONECTE.</small>
+              </div>
             </div>
-            <div className="workspace-brand__copy">
-              <span className="workspace-brand__eyebrow">Whiteboard Studio</span>
-              <strong>Workspace</strong>
-              <small className="workspace-brand__subtle">Private visual canvas</small>
-            </div>
+            <button type="button" className="sidebar-mini-action sidebar-mini-action--ghost" aria-label="Recolher sidebar" title="Recolher sidebar">
+              <ChevronLeft size={16} />
+            </button>
           </div>
 
-          <div className="workspace-search">
-            <Search size={16} />
-            <span>Search files and boards</span>
-          </div>
+          <section className="workspace-sidebar__section">
+            <div className="workspace-sidebar__section-header workspace-sidebar__section-header--plain">
+              <span className="panel-kicker">INÍCIO</span>
+            </div>
+            <nav className="sidebar-nav-list" aria-label="Navegação principal">
+              <button type="button" className={`sidebar-nav-item ${activeSidebarSection === 'files' ? 'sidebar-nav-item--active' : ''}`} onClick={() => openSidebarSection('files')}>
+                <FolderKanban size={16} />
+                <span>Meus arquivos</span>
+              </button>
+              <button type="button" className={`sidebar-nav-item ${activeSidebarSection === 'recent' ? 'sidebar-nav-item--active' : ''}`} onClick={() => openSidebarSection('recent')}>
+                <Clock3 size={16} />
+                <span>Recentes</span>
+              </button>
+              <button type="button" className={`sidebar-nav-item ${activeSidebarSection === 'favorites' ? 'sidebar-nav-item--active' : ''}`} onClick={() => openSidebarSection('favorites')}>
+                <Star size={16} />
+                <span>Favoritos</span>
+              </button>
+              <button type="button" className={`sidebar-nav-item ${activeSidebarSection === 'shared' ? 'sidebar-nav-item--active' : ''}`} onClick={() => openSidebarSection('shared')}>
+                <Users size={16} />
+                <span>Compartilhados</span>
+              </button>
+            </nav>
+          </section>
 
-          <nav className="sidebar-nav-list" aria-label="Main navigation">
-            <button type="button" className={`sidebar-nav-item ${activeSidebarSection === 'files' ? 'sidebar-nav-item--active' : ''}`} onClick={() => openSidebarSection('files')}>
-              <FolderKanban size={16} />
-              <span>Meus arquivos</span>
-            </button>
-            <button type="button" className={`sidebar-nav-item ${activeSidebarSection === 'recent' ? 'sidebar-nav-item--active' : ''}`} onClick={() => openSidebarSection('recent')}>
-              <Compass size={16} />
-              <span>Recentes</span>
-            </button>
-            <button type="button" className={`sidebar-nav-item ${activeSidebarSection === 'favorites' ? 'sidebar-nav-item--active' : ''}`} onClick={() => openSidebarSection('favorites')}>
-              <Sparkles size={16} />
-              <span>Favoritos</span>
-            </button>
-            <button type="button" className={`sidebar-nav-item ${activeSidebarSection === 'shared' ? 'sidebar-nav-item--active' : ''}`} onClick={() => openSidebarSection('shared')}>
-              <Share2 size={16} />
-              <span>Compartilhados</span>
-            </button>
-            <button type="button" className={`sidebar-nav-item ${activeSidebarSection === 'library' ? 'sidebar-nav-item--active' : ''}`} onClick={() => openSidebarSection('library')}>
-              <BookOpen size={16} />
-              <span>Biblioteca</span>
-            </button>
-            <button type="button" className={`sidebar-nav-item ${activeSidebarSection === 'templates' ? 'sidebar-nav-item--active' : ''}`} onClick={() => openSidebarSection('templates')}>
-              <LayoutTemplate size={16} />
-              <span>Templates</span>
-            </button>
-            <button type="button" className={`sidebar-nav-item ${activeSidebarSection === 'trash' ? 'sidebar-nav-item--active' : ''}`} onClick={() => openSidebarSection('trash')}>
-              <Trash2 size={16} />
-              <span>Lixeira</span>
-            </button>
-          </nav>
+          <section className="workspace-sidebar__section">
+            <div className="workspace-sidebar__section-header workspace-sidebar__section-header--plain">
+              <span className="panel-kicker">BIBLIOTECA</span>
+            </div>
+            <nav className="sidebar-nav-list" aria-label="Biblioteca">
+              <button type="button" className={`sidebar-nav-item ${activeSidebarSection === 'library' ? 'sidebar-nav-item--active' : ''}`} onClick={() => openSidebarSection('library')}>
+                <BookOpen size={16} />
+                <span>Biblioteca</span>
+              </button>
+              <button type="button" className={`sidebar-nav-item ${activeSidebarSection === 'templates' ? 'sidebar-nav-item--active' : ''}`} onClick={() => openSidebarSection('templates')}>
+                <LayoutTemplate size={16} />
+                <span>Templates</span>
+              </button>
+              <button type="button" className={`sidebar-nav-item ${activeSidebarSection === 'examples' ? 'sidebar-nav-item--active' : ''}`} onClick={() => openSidebarSection('examples')}>
+                <Compass size={16} />
+                <span>Exemplos</span>
+              </button>
+              <button type="button" className={`sidebar-nav-item ${activeSidebarSection === 'trash' ? 'sidebar-nav-item--active' : ''}`} onClick={() => openSidebarSection('trash')}>
+                <Trash2 size={16} />
+                <span>Lixeira</span>
+              </button>
+            </nav>
+          </section>
 
           <section className="workspace-sidebar__section workspace-sidebar__section--boards">
             <div className="workspace-sidebar__section-header">
-              <span className="panel-kicker">Boards</span>
+              <span className="panel-kicker">PASTAS</span>
               <button type="button" className="sidebar-mini-action" onClick={createBoard} aria-label="Create board">
                 <Plus size={15} />
               </button>
@@ -1185,13 +1214,12 @@ function App() {
                   onClick={() => openBoard(board.id)}
                 >
                   <div className="sidebar-board-card__glyph" aria-hidden="true">
-                    <Compass size={15} />
+                    <Folder size={15} />
                   </div>
                   <div className="sidebar-board-card__copy">
                     <strong>{board.name}</strong>
-                    <span>{board.id === activeBoardId ? 'Atual' : 'Abrir board'}</span>
+                    <span>{board.id === activeBoardId ? 'Aberta agora' : 'Abrir pasta'}</span>
                   </div>
-                  <ArrowRight size={14} />
                 </button>
               ))}
             </div>
@@ -1202,10 +1230,10 @@ function App() {
               <GeometricMotifIcon />
             </div>
             <div className="upgrade-card__copy">
-              <strong>Upgrade Whiteboard Pro</strong>
-              <span>Shared libraries, exports, and premium templates.</span>
+              <strong>Plano Pro</strong>
+              <span>Recursos avançados para organizar suas ideias.</span>
             </div>
-            <button type="button" className="upgrade-card__button" onClick={() => setStatusMessage('Upgrade flow coming next.')}>
+            <button type="button" className="upgrade-card__button" onClick={() => setStatusMessage('O fluxo de upgrade entra no próximo passo.')}>
               Upgrade
             </button>
           </div>
@@ -1235,7 +1263,7 @@ function App() {
               aria-label="Current project selector"
             >
               <div className="board-selector__copy">
-                <span className="panel-kicker">Project</span>
+                <span className="panel-kicker">Projeto atual</span>
                 <strong>{boardName}</strong>
               </div>
               <ChevronDown size={16} />
@@ -1267,7 +1295,10 @@ function App() {
           <div className="app-topbar__center">
             <div className="topbar-status">
               <Cloud size={16} />
-              <span>Synced</span>
+              <span>Sincronizado</span>
+            </div>
+            <div className="app-topbar__mobile-brand" aria-hidden="true">
+              <GeometricMotifIcon />
             </div>
           </div>
 
@@ -1279,8 +1310,9 @@ function App() {
               aria-label="Share board"
               title="Share"
             >
+              <GeometricMotifIcon />
               <Share2 size={18} />
-              <span>Share</span>
+              <span>Compartilhar</span>
             </button>
             <button type="button" className="profile-chip" aria-label="Workspace profile" title="Workspace profile">
               <UserCircle2 size={18} />
@@ -1515,41 +1547,81 @@ function App() {
           <div className="canvas-accent-banner__line" />
         </div>
 
+        <div className="canvas-quick-actions" aria-label="Ações rápidas do canvas">
+          <button type="button" className="floating-icon-button" onClick={() => activateTool('hand')} aria-label="Mover canvas" title="Mover canvas">
+            <Hand size={16} />
+          </button>
+          <button type="button" className="floating-icon-button" onClick={() => setStatusMessage('Os controles de distribuição entram no próximo passo.')} aria-label="Distribuição" title="Distribuição">
+            <AlignHorizontalJustifyCenter size={16} />
+          </button>
+          <button type="button" className="floating-icon-button" onClick={() => setStatusMessage('Os layouts rápidos entram no próximo passo.')} aria-label="Layouts" title="Layouts">
+            <LayoutTemplate size={16} />
+          </button>
+          <button type="button" className="floating-icon-button" onClick={() => setStatusMessage('A grade modular entra no próximo passo.')} aria-label="Grade modular" title="Grade modular">
+            <Layers3 size={16} />
+          </button>
+        </div>
+
+        {isBoardEmpty && (
+          <div className="canvas-showcase-hint" aria-hidden="true">
+            <div className="canvas-showcase-hint__note canvas-showcase-hint__note--left">
+              <strong>Estrutura</strong>
+              <span>Traz clareza ao que é complexo.</span>
+            </div>
+            <div className="canvas-showcase-hint__center">
+              <div className="canvas-showcase-hint__motif">
+                <GeometricMotifIcon />
+              </div>
+            </div>
+            <div className="canvas-showcase-hint__note canvas-showcase-hint__note--top-right">
+              <strong>Ideias</strong>
+              <span>Nascem da conexão de pensamentos.</span>
+            </div>
+            <div className="canvas-showcase-hint__note canvas-showcase-hint__note--bottom-right">
+              <strong>Propósito</strong>
+              <span>Transforma ideias em realidade.</span>
+            </div>
+          </div>
+        )}
+
         {!assetsOpen && !menuOpen && !pasteOpen && !boardDialog && (
           <aside className={`floating-panel properties-panel ${mobilePropertiesOpen ? 'properties-panel--mobile-open' : ''}`}>
             <div className="floating-panel__header">
               <div>
-                <span className="panel-kicker">Properties</span>
+                <span className="panel-kicker">Propriedades</span>
                 <h2>
                   {!hasSelection
-                    ? 'Canvas defaults'
+                    ? 'Ajustes do canvas'
                     : selectedShapes.length > 1
-                    ? `${selectedShapes.length} items selected`
+                    ? `${selectedShapes.length} itens selecionados`
                     : primarySelectedShape?.type === INSTAGRAM_REEL_SHAPE_TYPE
                       ? 'Instagram Reel'
                       : primarySelectedShape?.type === 'embed'
-                        ? 'Embedded media'
+                        ? 'Mídia incorporada'
                         : primarySelectedShape?.type === 'bookmark'
-                          ? 'Bookmark card'
+                          ? 'Cartão de link'
                           : primarySelectedShape?.type === 'image'
-                            ? 'Image'
+                            ? 'Imagem'
                             : primarySelectedShape?.type === 'note'
-                              ? 'Sticky note'
+                              ? 'Nota'
                               : primarySelectedShape?.type === 'text'
-                                ? 'Text block'
-                                : 'Selection'}
+                                ? 'Texto'
+                                : 'Seleção'}
                 </h2>
               </div>
+              <button type="button" className="sidebar-mini-action sidebar-mini-action--ghost properties-panel__collapse" aria-label="Recolher painel" title="Recolher painel">
+                <ChevronLeft size={15} />
+              </button>
             </div>
 
             {!hasSelection && (
               <div className="properties-empty">
-                <span>Choose an object to edit appearance, layers, and actions.</span>
+                <span>Selecione um elemento para ajustar aparência, camadas e ações.</span>
               </div>
             )}
 
             <div className="properties-panel__section">
-              <span>Actions</span>
+              <span>Ações</span>
               <div className="inline-actions">
                 <button type="button" className="secondary-icon-button" onClick={duplicateSelection} title="Duplicate" disabled={!hasSelection}>
                   <CopyPlus size={16} />
@@ -1565,20 +1637,20 @@ function App() {
 
             {isMediaSelection && (
               <div className="properties-panel__section">
-                <span>Embedded media</span>
+                <span>Mídia incorporada</span>
                 <button
                   type="button"
                   className="secondary-button secondary-button--full"
                   onClick={() => setMediaInteractionEnabled((enabled) => !enabled)}
                 >
                   <ArrowUpRight size={16} />
-                  <span>{mediaInteractionEnabled ? 'Lock embeds for editing' : 'Enable playback and interaction'}</span>
+                  <span>{mediaInteractionEnabled ? 'Bloquear mídia para editar' : 'Ativar reprodução e interação'}</span>
                 </button>
               </div>
             )}
 
             <div className="properties-panel__section">
-              <span>Colors</span>
+              <span>Aparência</span>
               <div className="swatch-row">
                 {COLOR_OPTIONS.map((color) => (
                   <button
@@ -1594,7 +1666,7 @@ function App() {
 
             {!isMediaSelection && (
               <div className="properties-panel__section">
-                <span>Stroke</span>
+                <span>Traço</span>
                 <div className="chip-row">
                   {FILL_OPTIONS.map((fill) => (
                     <button
@@ -1612,7 +1684,7 @@ function App() {
 
             {!isMediaSelection && (
               <div className="properties-panel__section">
-                <span>Line style</span>
+                <span>Linha</span>
                 <div className="chip-row">
                   {DASH_OPTIONS.map((dash) => (
                     <button
@@ -1629,7 +1701,7 @@ function App() {
             )}
 
             <div className="properties-panel__section">
-              <span>Thickness</span>
+              <span>Espessura</span>
               <div className="chip-row">
                 {SIZE_OPTIONS.map((size) => (
                   <button
@@ -1646,7 +1718,7 @@ function App() {
 
             {hasTextSelection && (
               <div className="properties-panel__section">
-                <span>Font</span>
+                <span>Fonte</span>
                 <div className="chip-row">
                   {FONT_OPTIONS.map((font) => (
                     <button
@@ -1663,25 +1735,25 @@ function App() {
             )}
 
             <div className="properties-panel__section">
-              <span>Layers</span>
+              <span>Camadas</span>
               <div className="inline-actions">
                 <button type="button" className="secondary-button secondary-button--full" onClick={bringSelectionToFront} disabled={!hasSelection}>
                   <Layers3 size={16} />
-                  <span>Bring forward</span>
+                  <span>Trazer para frente</span>
                 </button>
               </div>
             </div>
 
             <div className="properties-panel__section">
-              <span>Alignment</span>
+              <span>Alinhamento</span>
               <div className="inline-actions">
                 <button
                   type="button"
                   className="secondary-button secondary-button--full"
-                  onClick={() => setStatusMessage('Alignment helpers are coming next.')}
+                  onClick={() => setStatusMessage('As guias de alinhamento entram no próximo passo.')}
                 >
                   <AlignHorizontalJustifyCenter size={16} />
-                  <span>Center guides</span>
+                  <span>Guias centrais</span>
                 </button>
               </div>
             </div>
@@ -1708,7 +1780,7 @@ function App() {
             title="Sticky notes"
           >
             <StickyNote size={18} />
-            <span>Notes</span>
+            <span>Notas</span>
           </button>
           <button
             type="button"
@@ -1718,7 +1790,7 @@ function App() {
             title="Image"
           >
             <Image size={18} />
-            <span>Image</span>
+            <span>Imagens</span>
           </button>
           <button
             type="button"
@@ -1728,7 +1800,7 @@ function App() {
             title="Geometric tool"
           >
             <GeometricMotifIcon />
-            <span>Motif</span>
+            <span>Geometria</span>
           </button>
         </div>
 
@@ -1751,7 +1823,7 @@ function App() {
           aria-label="Toggle minimap"
         >
           <Compass size={16} />
-          <span>Map</span>
+          <span>Mapa</span>
         </button>
 
         {minimap && (
@@ -1807,8 +1879,8 @@ function App() {
             <div className="mobile-tools-sheet">
               <div className="mobile-tools-sheet__header">
                 <div>
-                  <span className="panel-kicker">Tools</span>
-                  <strong>Choose your next move</strong>
+                  <span className="panel-kicker">Ferramentas</span>
+                  <strong>Escolha sua próxima ação</strong>
                 </div>
                 <button type="button" className="sidebar-mini-action" onClick={() => setMobileToolsOpen(false)} aria-label="Close tools">
                   <X size={14} />
@@ -1827,11 +1899,11 @@ function App() {
                 ))}
                 <button type="button" className="tool-button tool-button--compact" onClick={addStickyNote} aria-label="Sticky notes">
                   <StickyNote size={18} />
-                  <span>Notes</span>
+                  <span>Notas</span>
                 </button>
                 <button type="button" className="tool-button tool-button--compact" onClick={addImagePrompt} aria-label="Image">
                   <Image size={18} />
-                  <span>Image</span>
+                  <span>Imagens</span>
                 </button>
                 <button
                   type="button"
@@ -1840,7 +1912,7 @@ function App() {
                   aria-label="Geometric tool"
                 >
                   <GeometricMotifIcon />
-                  <span>Motif</span>
+                  <span>Geo</span>
                 </button>
               </div>
             </div>
@@ -1850,11 +1922,11 @@ function App() {
         <div className="mobile-bottom-nav" aria-label="Mobile navigation">
           <button type="button" className="mobile-bottom-nav__item" onClick={() => openSidebarSection('files')}>
             <FolderKanban size={16} />
-            <span>Boards</span>
+            <span>Arquivos</span>
           </button>
           <button type="button" className="mobile-bottom-nav__item" onClick={() => openSidebarSection('library')}>
             <BookOpen size={16} />
-            <span>Library</span>
+            <span>Biblioteca</span>
           </button>
           <button
             type="button"
@@ -1866,11 +1938,11 @@ function App() {
             }}
           >
             <Plus size={18} />
-            <span>Tools</span>
+            <span>+</span>
           </button>
-          <button type="button" className="mobile-bottom-nav__item" onClick={openPastePanel}>
-            <Copy size={16} />
-            <span>Paste</span>
+          <button type="button" className="mobile-bottom-nav__item" onClick={() => openSidebarSection('shared')}>
+            <Share2 size={16} />
+            <span>Compart.</span>
           </button>
           <button
             type="button"
@@ -1885,7 +1957,7 @@ function App() {
             }}
           >
             <Layers3 size={16} />
-            <span>Adjust</span>
+            <span>Ajustes</span>
           </button>
         </div>
 
